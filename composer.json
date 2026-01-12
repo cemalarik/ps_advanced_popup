@@ -1,0 +1,27 @@
+{
+    "name": "prestashop/ps_advanced_popup",
+    "description": "Advanced Smart Popup module for PrestaShop - Create targeted popups with smart triggers",
+    "type": "prestashop-module",
+    "license": "AFL-3.0",
+    "authors": [
+        {
+            "name": "Developer",
+            "email": "developer@example.com"
+        }
+    ],
+    "require": {
+        "php": ">=7.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "PrestaShop\\Module\\PsAdvancedPopup\\": "src/"
+        },
+        "classmap": [
+            "classes/"
+        ]
+    },
+    "config": {
+        "preferred-install": "dist",
+        "sort-packages": true
+    }
+}
