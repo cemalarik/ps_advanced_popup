@@ -26,7 +26,7 @@
                 --popup-button: {$popup.button_color|escape:'html':'UTF-8'};
                 --popup-button-text: {$popup.button_text_color|escape:'html':'UTF-8'};
                 --popup-radius: {$popup.border_radius|intval}px;
-                {if $popup.bg_image}--popup-image: url('/{$popup.bg_image|escape:'html':'UTF-8'}');{/if}">
+                {if $popup.bg_image_url}--popup-image: url('{$popup.bg_image_url|escape:'html':'UTF-8'}');{/if}">
 
         <button type="button"
                 class="smart-popup-close close-style-{$popup.close_button_style|escape:'html':'UTF-8'}"

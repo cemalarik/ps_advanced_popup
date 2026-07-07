@@ -196,6 +196,7 @@ class AdminSmartPopupController extends ModuleAdminController
         if (!$popup) {
             Tools::redirectAdmin($this->context->link->getAdminLink('AdminSmartPopup'));
         }
+        $popup['bg_image_url'] = $this->getPublicAssetUrl(isset($popup['bg_image']) ? $popup['bg_image'] : '');
 
         $this->context->smarty->assign([
             'editor_title' => $idPopup ? $this->l('Edit popup') : $this->l('Create popup'),
@@ -243,6 +244,20 @@ class AdminSmartPopupController extends ModuleAdminController
         return $this->context->smarty->fetch(
             _PS_MODULE_DIR_ . 'ps_advanced_popup/views/templates/admin/stats.tpl'
         );
+    }
+
+    private function getPublicAssetUrl($path)
+    {
+        $path = trim((string) $path);
+        if ($path === '') {
+            return '';
+        }
+
+        if (preg_match('#^(?:https?:)?//#', $path) || $path[0] === '/') {
+            return $path;
+        }
+
+        return rtrim(__PS_BASE_URI__, '/') . '/' . ltrim($path, '/');
     }
 
     private function collectPopupData($imagePath)

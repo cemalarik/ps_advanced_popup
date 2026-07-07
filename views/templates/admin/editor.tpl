@@ -296,22 +296,32 @@
             <section class="aps-panel aps-wizard-panel" data-panel="5">
                 <div class="aps-section-heading">
                     <h3>{l s='Preview and variants' mod='ps_advanced_popup'}</h3>
-                    <div class="aps-device-toggle">
-                        <button type="button" class="is-active" data-preview-device="desktop">{l s='Desktop' mod='ps_advanced_popup'}</button>
-                        <button type="button" data-preview-device="tablet">{l s='Tablet' mod='ps_advanced_popup'}</button>
-                        <button type="button" data-preview-device="mobile">{l s='Mobile' mod='ps_advanced_popup'}</button>
+                    <div class="aps-preview-toolbar">
+                        <div class="aps-preview-variant-toggle" data-ab-preview-controls {if !$popup.ab_test_enabled}hidden{/if}>
+                            <button type="button" class="is-active" data-preview-variant="a">{l s='Variant A' mod='ps_advanced_popup'}</button>
+                            <button type="button" data-preview-variant="b">{l s='Variant B' mod='ps_advanced_popup'}</button>
+                        </div>
+                        <div class="aps-device-toggle">
+                            <button type="button" class="is-active" data-preview-device="desktop">{l s='Desktop' mod='ps_advanced_popup'}</button>
+                            <button type="button" data-preview-device="tablet">{l s='Tablet' mod='ps_advanced_popup'}</button>
+                            <button type="button" data-preview-device="mobile">{l s='Mobile' mod='ps_advanced_popup'}</button>
+                        </div>
                     </div>
                 </div>
 
                 <div class="aps-grid aps-grid-2">
                     <div class="aps-preview-shell" id="popup-preview" data-device="desktop">
-                        <div class="aps-preview-popup">
-                            <button type="button" aria-label="{l s='Close' mod='ps_advanced_popup'}">×</button>
-                            <div class="aps-preview-title">{$lang_values.$default_language_id.title|default:''|escape:'html':'UTF-8'}</div>
-                            <div class="aps-preview-subtitle">{$lang_values.$default_language_id.subtitle|default:''|escape:'html':'UTF-8'}</div>
-                            <div class="aps-preview-content">{$lang_values.$default_language_id.content|default:''|escape:'html':'UTF-8'}</div>
-                            <div class="aps-preview-coupon">{$lang_values.$default_language_id.coupon_code|default:''|escape:'html':'UTF-8'}</div>
-                            <div class="aps-preview-cta">{$lang_values.$default_language_id.cta_text|default:''|escape:'html':'UTF-8'}</div>
+                        <div class="aps-preview-popup aps-preview-layout-{$popup.layout|escape:'html':'UTF-8'} {if $popup.bg_image_url}has-image{/if}"
+                             data-existing-image="{$popup.bg_image_url|escape:'html':'UTF-8'}">
+                            <button type="button" aria-label="{l s='Close' mod='ps_advanced_popup'}">&times;</button>
+                            <div class="aps-preview-media" aria-hidden="true"></div>
+                            <div class="aps-preview-body">
+                                <div class="aps-preview-title">{$lang_values.$default_language_id.title|default:''|escape:'html':'UTF-8'}</div>
+                                <div class="aps-preview-subtitle">{$lang_values.$default_language_id.subtitle|default:''|escape:'html':'UTF-8'}</div>
+                                <div class="aps-preview-content">{$lang_values.$default_language_id.content|default:''|escape:'html':'UTF-8'}</div>
+                                <div class="aps-preview-coupon">{$lang_values.$default_language_id.coupon_code|default:''|escape:'html':'UTF-8'}</div>
+                                <div class="aps-preview-cta">{$lang_values.$default_language_id.cta_text|default:''|escape:'html':'UTF-8'}</div>
+                            </div>
                         </div>
                     </div>
 
@@ -321,7 +331,7 @@
                             <label><span>{l s='Variant A name' mod='ps_advanced_popup'}</span><input type="text" name="variant_a_name" value="{$variants.a.name|escape:'html':'UTF-8'}"></label>
                             <label><span>{l s='Variant A traffic' mod='ps_advanced_popup'}</span><input type="number" name="variant_a_traffic" min="1" max="99" value="{$variants.a.traffic_percentage|intval}"></label>
                             <label><span>{l s='Variant B name' mod='ps_advanced_popup'}</span><input type="text" name="variant_b_name" value="{$variants.b.name|escape:'html':'UTF-8'}"></label>
-                            <label><span>{l s='Variant B traffic' mod='ps_advanced_popup'}</span><input type="number" value="{$variants.b.traffic_percentage|intval}" disabled></label>
+                            <label><span>{l s='Variant B traffic' mod='ps_advanced_popup'}</span><input type="number" value="{$variants.b.traffic_percentage|intval}" data-variant-b-traffic disabled></label>
                         </div>
 
                         {foreach from=$languages item=language}

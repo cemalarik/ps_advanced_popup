@@ -186,10 +186,33 @@ class Ps_advanced_popup extends Module
             (int) $this->context->language->id,
             (int) $this->context->shop->id
         );
+        $this->preparePopupAssetUrls($popups);
 
         Cache::store($cacheKey, $popups);
 
         return $popups;
+    }
+
+    private function preparePopupAssetUrls(&$popups)
+    {
+        foreach ($popups as &$popup) {
+            $popup['bg_image_url'] = $this->getPublicAssetUrl(isset($popup['bg_image']) ? $popup['bg_image'] : '');
+        }
+        unset($popup);
+    }
+
+    private function getPublicAssetUrl($path)
+    {
+        $path = trim((string) $path);
+        if ($path === '') {
+            return '';
+        }
+
+        if (preg_match('#^(?:https?:)?//#', $path) || $path[0] === '/') {
+            return $path;
+        }
+
+        return rtrim(__PS_BASE_URI__, '/') . '/' . ltrim($path, '/');
     }
 
     private function getCacheKey()
