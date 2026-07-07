@@ -24,6 +24,7 @@ class AdminSmartPopupController extends ModuleAdminController
 
     public function initContent()
     {
+        $this->ensureSchemaColumns();
         $this->processSmartPost();
         $this->processSmartAction();
 
@@ -46,6 +47,37 @@ class AdminSmartPopupController extends ModuleAdminController
         $this->addCSS(_MODULE_DIR_ . 'ps_advanced_popup/views/css/back.css');
         $this->addJS(_MODULE_DIR_ . 'ps_advanced_popup/views/js/vendor/chart-lite.js');
         $this->addJS(_MODULE_DIR_ . 'ps_advanced_popup/views/js/back.js');
+    }
+
+    /**
+     * Self-healing schema guard for columns added in point releases.
+     * Covers dev/deploy flows where files are replaced without running
+     * the PrestaShop module upgrade scripts. Admin-only and cheap.
+     */
+    private function ensureSchemaColumns()
+    {
+        static $checked = false;
+        if ($checked || !SmartPopup::isSchemaReady()) {
+            $checked = true;
+            return;
+        }
+        $checked = true;
+
+        $table = _DB_PREFIX_ . 'smart_popup';
+        $columns = [
+            'subtitle_color' => "VARCHAR(7) NOT NULL DEFAULT '#4b5563' AFTER `text_color`",
+        ];
+
+        foreach ($columns as $column => $definition) {
+            $rows = Db::getInstance()->executeS(
+                'SHOW COLUMNS FROM `' . bqSQL($table) . '` LIKE "' . pSQL($column) . '"'
+            );
+            if (empty($rows)) {
+                Db::getInstance()->execute(
+                    'ALTER TABLE `' . $table . '` ADD COLUMN `' . bqSQL($column) . '` ' . $definition
+                );
+            }
+        }
     }
 
     private function processSmartPost()
