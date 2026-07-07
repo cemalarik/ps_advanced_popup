@@ -22,6 +22,7 @@
          style="--popup-width: {$popup.width|intval}px;
                 --popup-bg: {$popup.bg_color|escape:'html':'UTF-8'};
                 --popup-text: {$popup.text_color|escape:'html':'UTF-8'};
+                --popup-subtitle: {$popup.subtitle_color|default:'#4b5563'|escape:'html':'UTF-8'};
                 --popup-accent: {$popup.accent_color|escape:'html':'UTF-8'};
                 --popup-button: {$popup.button_color|escape:'html':'UTF-8'};
                 --popup-button-text: {$popup.button_text_color|escape:'html':'UTF-8'};

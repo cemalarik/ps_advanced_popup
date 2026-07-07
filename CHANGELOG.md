@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.2
+
+- Added a dedicated subtitle text color setting (editor, live preview and front output); previously the subtitle color was derived from the main text color.
+
 ## 2.0.1
 
 - Added a real 1.x -> 2.x database migration (`upgrade-2.0.0.php`); upgrading no longer requires uninstall/reinstall.

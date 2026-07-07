@@ -37,7 +37,7 @@ class SmartPopupValidator
             }
         }
 
-        foreach (['bg_color', 'text_color', 'accent_color', 'button_color', 'button_text_color'] as $field) {
+        foreach (['bg_color', 'text_color', 'subtitle_color', 'accent_color', 'button_color', 'button_text_color'] as $field) {
             if (isset($data[$field]) && !preg_match('/^#[0-9A-Fa-f]{6}$/', $data[$field])) {
                 $errors[] = 'Invalid color for ' . $field;
             }

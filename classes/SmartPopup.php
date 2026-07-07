@@ -23,6 +23,7 @@ class SmartPopup extends ObjectModel
     public $width;
     public $bg_color;
     public $text_color;
+    public $subtitle_color;
     public $accent_color;
     public $button_color;
     public $button_text_color;
@@ -68,6 +69,7 @@ class SmartPopup extends ObjectModel
             'width' => ['type' => self::TYPE_INT, 'validate' => 'isUnsignedInt'],
             'bg_color' => ['type' => self::TYPE_STRING, 'validate' => 'isColor', 'size' => 7],
             'text_color' => ['type' => self::TYPE_STRING, 'validate' => 'isColor', 'size' => 7],
+            'subtitle_color' => ['type' => self::TYPE_STRING, 'validate' => 'isColor', 'size' => 7],
             'accent_color' => ['type' => self::TYPE_STRING, 'validate' => 'isColor', 'size' => 7],
             'button_color' => ['type' => self::TYPE_STRING, 'validate' => 'isColor', 'size' => 7],
             'button_text_color' => ['type' => self::TYPE_STRING, 'validate' => 'isColor', 'size' => 7],

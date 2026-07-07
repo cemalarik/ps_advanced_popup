@@ -197,6 +197,10 @@
     grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
+.aps-grid-6 {
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
 .aps-editor label {
     display: block;
     margin: 0;
@@ -460,7 +464,8 @@
 @media (max-width: 1100px) {
     .aps-metrics,
     .aps-grid-4,
-    .aps-grid-5 {
+    .aps-grid-5,
+    .aps-grid-6 {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
@@ -478,7 +483,8 @@
     .aps-grid-2,
     .aps-grid-3,
     .aps-grid-4,
-    .aps-grid-5 {
+    .aps-grid-5,
+    .aps-grid-6 {
         grid-template-columns: 1fr;
     }
 }

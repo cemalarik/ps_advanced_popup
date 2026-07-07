@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS `PREFIX_smart_popup` (
     `width` INT(11) UNSIGNED NOT NULL DEFAULT 560,
     `bg_color` VARCHAR(7) NOT NULL DEFAULT '#ffffff',
     `text_color` VARCHAR(7) NOT NULL DEFAULT '#1f2937',
+    `subtitle_color` VARCHAR(7) NOT NULL DEFAULT '#4b5563',
     `accent_color` VARCHAR(7) NOT NULL DEFAULT '#25b9d7',
     `button_color` VARCHAR(7) NOT NULL DEFAULT '#111827',
     `button_text_color` VARCHAR(7) NOT NULL DEFAULT '#ffffff',

@@ -83,6 +83,7 @@ $_MODULE['<{ps_advanced_popup}prestashop>dashboard_5a5c740a403b36eb160584359f46a
 $_MODULE['<{ps_advanced_popup}prestashop>dashboard_f2a6c498fb90ee345d997f888fce3b18'] = 'Delete';
 $_MODULE['<{ps_advanced_popup}prestashop>dashboard_6eee9ce097ac4ad9f47bf230d08f02f6'] = 'No popups yet. Choose a template above to create the first campaign.';
 
+$_MODULE['<{ps_advanced_popup}prestashop>editor_78558c89d11475fe7675770d00ec4d66'] = 'Subtitle color';
 $_MODULE['<{ps_advanced_popup}prestashop>editor_125716719c7a2da3c81421d6b05b88e5'] = 'Build a campaign from intent to preview without touching raw HTML.';
 $_MODULE['<{ps_advanced_popup}prestashop>editor_e4d448702c13e08b8008ca891960f4d0'] = 'Back to dashboard';
 $_MODULE['<{ps_advanced_popup}prestashop>editor_12c74214cb4c18cf36d885303d6aa2e1'] = 'Goal';

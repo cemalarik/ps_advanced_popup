@@ -152,9 +152,10 @@
                     </label>
                 </div>
 
-                <div class="aps-grid aps-grid-5 aps-color-grid">
+                <div class="aps-grid aps-grid-6 aps-color-grid">
                     <label><span>{l s='Background' mod='ps_advanced_popup'}</span><input type="color" name="bg_color" value="{$popup.bg_color|escape:'html':'UTF-8'}"></label>
                     <label><span>{l s='Text' mod='ps_advanced_popup'}</span><input type="color" name="text_color" value="{$popup.text_color|escape:'html':'UTF-8'}"></label>
+                    <label><span>{l s='Subtitle color' mod='ps_advanced_popup'}</span><input type="color" name="subtitle_color" value="{$popup.subtitle_color|default:'#4b5563'|escape:'html':'UTF-8'}"></label>
                     <label><span>{l s='Accent' mod='ps_advanced_popup'}</span><input type="color" name="accent_color" value="{$popup.accent_color|escape:'html':'UTF-8'}"></label>
                     <label><span>{l s='Button' mod='ps_advanced_popup'}</span><input type="color" name="button_color" value="{$popup.button_color|escape:'html':'UTF-8'}"></label>
                     <label><span>{l s='Button text' mod='ps_advanced_popup'}</span><input type="color" name="button_text_color" value="{$popup.button_text_color|escape:'html':'UTF-8'}"></label>

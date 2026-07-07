@@ -167,6 +167,7 @@
 
         preview.style.backgroundColor = field('bg_color') ? field('bg_color').value : '#ffffff';
         preview.style.color = field('text_color') ? field('text_color').value : '#1f2937';
+        $('.aps-preview-subtitle').style.color = field('subtitle_color') ? field('subtitle_color').value : '#4b5563';
         preview.style.borderRadius = isMobilePreview && mobileBehavior === 'bottom_sheet'
             ? radius + 'px ' + radius + 'px 0 0'
             : radius + 'px';

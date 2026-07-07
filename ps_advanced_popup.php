@@ -19,7 +19,7 @@ class Ps_advanced_popup extends Module
     {
         $this->name = 'ps_advanced_popup';
         $this->tab = 'front_office_features';
-        $this->version = '2.0.1';
+        $this->version = '2.0.2';
         $this->author = 'Advanced Popup Studio';
         $this->need_instance = 0;
         $this->ps_versions_compliancy = [

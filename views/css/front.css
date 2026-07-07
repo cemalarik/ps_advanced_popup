@@ -135,7 +135,7 @@
 
 .smart-popup-subtitle {
     margin: 0 0 14px;
-    color: color-mix(in srgb, var(--popup-text, #1f2937) 72%, #ffffff);
+    color: var(--popup-subtitle, color-mix(in srgb, var(--popup-text, #1f2937) 72%, #ffffff));
     font-size: 15px;
     line-height: 1.45;
 }
