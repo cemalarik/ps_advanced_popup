@@ -2,7 +2,7 @@
 <module>
     <name>ps_advanced_popup</name>
     <displayName><![CDATA[Advanced Popup Studio]]></displayName>
-    <version><![CDATA[2.0.0]]></version>
+    <version><![CDATA[2.0.1]]></version>
     <description><![CDATA[Create premium targeted popups with templates, A/B variants, coupons and anonymous analytics.]]></description>
     <author><![CDATA[Advanced Popup Studio]]></author>
     <tab><![CDATA[front_office_features]]></tab>

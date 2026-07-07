@@ -252,7 +252,10 @@ class SmartPopup extends ObjectModel
         $device = isset($context['device']) ? $context['device'] : 'desktop';
         $pageType = isset($context['page_type']) ? $context['page_type'] : 'other';
         $url = isset($context['url']) ? $context['url'] : Tools::getHttpReferer();
-        $sessionKey = isset($context['session_key']) ? $context['session_key'] : self::buildFallbackSessionKey();
+        $sessionKey = !empty($context['session_key']) ? $context['session_key'] : self::buildFallbackSessionKey();
+        $sessionKey = Tools::substr((string) $sessionKey, 0, 40);
+        $device = Tools::substr((string) $device, 0, 20);
+        $pageType = Tools::substr((string) $pageType, 0, 50);
         $eventDate = date('Y-m-d H:i:s');
         $statDate = date('Y-m-d');
         $idVariant = (int) $idVariant;
@@ -285,6 +288,15 @@ class SmartPopup extends ObjectModel
                 ON DUPLICATE KEY UPDATE `count` = `count` + 1';
 
         Db::getInstance()->execute($sql);
+
+        // Probabilistic retention cleanup: keep raw events for 90 days (daily aggregates are kept).
+        if (mt_rand(1, 100) === 1) {
+            Db::getInstance()->execute(
+                'DELETE FROM `' . _DB_PREFIX_ . 'smart_popup_event`
+                 WHERE `event_date` < "' . pSQL(date('Y-m-d H:i:s', strtotime('-90 days'))) . '"
+                 LIMIT 5000'
+            );
+        }
 
         return (bool) $inserted;
     }

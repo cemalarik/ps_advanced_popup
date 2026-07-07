@@ -71,6 +71,11 @@ class Ps_advanced_popupAjaxModuleFrontController extends ModuleFrontController
         if ($result['success']) {
             $this->recordSubscriber($email, $idPopup, $idVariant);
             SmartPopup::trackEvent($idPopup, 'newsletter_success', $idVariant, $context);
+
+            $successMessage = $this->getPopupSuccessMessage($idPopup);
+            if ($successMessage !== '') {
+                $result['message'] = $successMessage;
+            }
         } else {
             SmartPopup::trackEvent($idPopup, 'newsletter_error', $idVariant, $context, ['reason' => 'subscribe_failed']);
         }
@@ -78,9 +83,51 @@ class Ps_advanced_popupAjaxModuleFrontController extends ModuleFrontController
         $this->ajaxResponse($result);
     }
 
+    private function getPopupSuccessMessage($idPopup)
+    {
+        $message = Db::getInstance()->getValue(
+            'SELECT `success_message` FROM `' . _DB_PREFIX_ . 'smart_popup_lang`
+             WHERE `id_popup` = ' . (int) $idPopup . '
+             AND `id_lang` = ' . (int) $this->context->language->id
+        );
+
+        return trim((string) $message);
+    }
+
     private function subscribeWithModule($email)
     {
         $idShop = (int) $this->context->shop->id;
+
+        // Existing customer: toggle the newsletter flag instead of using the guest table.
+        $customer = Db::getInstance()->getRow(
+            'SELECT `id_customer`, `newsletter` FROM `' . _DB_PREFIX_ . 'customer`
+             WHERE `email` = "' . pSQL($email) . '"
+             AND `id_shop` = ' . (int) $idShop . '
+             AND `deleted` = 0'
+        );
+
+        if ($customer) {
+            if ((int) $customer['newsletter']) {
+                return [
+                    'success' => false,
+                    'message' => $this->module->l('This email is already subscribed', 'ajax'),
+                ];
+            }
+
+            $updated = Db::getInstance()->update('customer', [
+                'newsletter' => 1,
+                'newsletter_date_add' => date('Y-m-d H:i:s'),
+                'ip_registration_newsletter' => pSQL(Tools::getRemoteAddr()),
+            ], 'id_customer = ' . (int) $customer['id_customer']);
+
+            return [
+                'success' => (bool) $updated,
+                'message' => $updated
+                    ? $this->module->l('Thank you for subscribing!', 'ajax')
+                    : $this->module->l('An error occurred. Please try again.', 'ajax'),
+            ];
+        }
+
         $exists = Db::getInstance()->getValue(
             'SELECT COUNT(*) FROM `' . _DB_PREFIX_ . 'emailsubscription`
              WHERE `email` = "' . pSQL($email) . '"
@@ -184,7 +231,7 @@ class Ps_advanced_popupAjaxModuleFrontController extends ModuleFrontController
     {
         $idPopup = (int) Tools::getValue('id_popup');
         $idVariant = (int) Tools::getValue('id_variant');
-        $couponCode = Tools::getValue('coupon_code');
+        $couponCode = Tools::substr(trim((string) Tools::getValue('coupon_code')), 0, 80);
         $context = $this->getEventContext();
 
         SmartPopup::recordCouponEvent(
@@ -224,13 +271,29 @@ class Ps_advanced_popupAjaxModuleFrontController extends ModuleFrontController
 
     private function getEventContext()
     {
+        $device = Tools::getValue('device', 'desktop');
+        if (!in_array($device, ['desktop', 'tablet', 'mobile'], true)) {
+            $device = 'desktop';
+        }
+
+        $pageType = Tools::getValue('page_type', 'other');
+        $allowedPageTypes = ['home', 'category', 'product', 'cart', 'checkout', 'search', 'brand', 'cms', 'other'];
+        if (!in_array($pageType, $allowedPageTypes, true)) {
+            $pageType = 'other';
+        }
+
+        $sessionKey = (string) Tools::getValue('session_key');
+        if (!preg_match('/^[a-f0-9]{40}$/i', $sessionKey)) {
+            $sessionKey = '';
+        }
+
         return [
             'id_shop' => (int) $this->context->shop->id,
             'id_lang' => (int) $this->context->language->id,
-            'device' => Tools::getValue('device', 'desktop'),
-            'page_type' => Tools::getValue('page_type', 'other'),
-            'url' => Tools::getValue('url', $this->getReferer()),
-            'session_key' => Tools::getValue('session_key'),
+            'device' => $device,
+            'page_type' => $pageType,
+            'url' => Tools::substr((string) Tools::getValue('url', $this->getReferer()), 0, 2048),
+            'session_key' => $sessionKey,
         ];
     }
 

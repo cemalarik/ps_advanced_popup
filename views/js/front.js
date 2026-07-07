@@ -43,6 +43,18 @@
             payload += '&' + encodeURIComponent(key) + '=' + encodeURIComponent(data[key] == null ? '' : data[key]);
         });
 
+        // Fire-and-forget events must survive page navigation (e.g. CTA clicks).
+        if (!callback && navigator.sendBeacon) {
+            try {
+                var blob = new Blob([payload], { type: 'application/x-www-form-urlencoded' });
+                if (navigator.sendBeacon(config.ajaxUrl, blob)) {
+                    return;
+                }
+            } catch (e) {
+                // Fall through to XHR.
+            }
+        }
+
         var xhr = new XMLHttpRequest();
         xhr.open('POST', config.ajaxUrl, true);
         xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');

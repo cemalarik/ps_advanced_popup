@@ -17,7 +17,7 @@
 
     {if !$schema_ready}
         <div class="alert alert-warning">
-            {l s='The installed database schema belongs to an older module version. Version 2.0 is fresh-install oriented; uninstall and reinstall the module to create the new tables.' mod='ps_advanced_popup'}
+            {l s='The installed database schema belongs to an older module version. Run the module upgrade (or reset the module) to create the new tables.' mod='ps_advanced_popup'}
         </div>
     {/if}
 

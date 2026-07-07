@@ -55,7 +55,7 @@ class AdminSmartPopupController extends ModuleAdminController
         }
 
         if (!SmartPopup::isSchemaReady()) {
-            $this->errors[] = $this->l('The database schema is not ready for version 2.0. Please uninstall and reinstall the module for a fresh install.');
+            $this->errors[] = $this->l('The database schema is not ready for version 2.0. Please run the module upgrade or reset the module.');
             return;
         }
 
@@ -72,6 +72,8 @@ class AdminSmartPopupController extends ModuleAdminController
         if ($popupData['internal_name'] === '') {
             $this->errors[] = $this->l('Internal name is required.');
         }
+
+        $this->validateLangInputs();
 
         if (!empty($this->errors)) {
             return;
@@ -296,6 +298,46 @@ class AdminSmartPopupController extends ModuleAdminController
         ];
     }
 
+    /**
+     * The controller writes with raw SQL, so ObjectModel validation never runs.
+     * Enforce isCleanHtml / isUrl here to block stored XSS and broken URLs.
+     */
+    private function validateLangInputs()
+    {
+        $cleanHtmlFields = ['title', 'subtitle', 'content', 'cta_text', 'coupon_code', 'consent_text', 'success_message'];
+        $variantCleanFields = ['title', 'subtitle', 'content', 'cta_text', 'coupon_code'];
+
+        foreach (Language::getLanguages(false) as $lang) {
+            $idLang = (int) $lang['id_lang'];
+
+            foreach ($cleanHtmlFields as $fieldName) {
+                $value = (string) Tools::getValue($fieldName . '_' . $idLang);
+                if ($value !== '' && !Validate::isCleanHtml($value)) {
+                    $this->errors[] = sprintf($this->l('Invalid content in field "%s" (%s).'), $fieldName, $lang['iso_code']);
+                }
+            }
+
+            $ctaUrl = trim((string) Tools::getValue('cta_url_' . $idLang));
+            if ($ctaUrl !== '' && (!Validate::isUrl($ctaUrl) || preg_match('/^\s*javascript:/i', $ctaUrl))) {
+                $this->errors[] = sprintf($this->l('Invalid CTA URL (%s).'), $lang['iso_code']);
+            }
+
+            foreach (['a', 'b'] as $variantKey) {
+                foreach ($variantCleanFields as $fieldName) {
+                    $value = (string) Tools::getValue('variant_' . $variantKey . '_' . $fieldName . '_' . $idLang);
+                    if ($value !== '' && !Validate::isCleanHtml($value)) {
+                        $this->errors[] = sprintf($this->l('Invalid content in variant %s field "%s" (%s).'), strtoupper($variantKey), $fieldName, $lang['iso_code']);
+                    }
+                }
+
+                $variantUrl = trim((string) Tools::getValue('variant_' . $variantKey . '_cta_url_' . $idLang));
+                if ($variantUrl !== '' && (!Validate::isUrl($variantUrl) || preg_match('/^\s*javascript:/i', $variantUrl))) {
+                    $this->errors[] = sprintf($this->l('Invalid variant %s CTA URL (%s).'), strtoupper($variantKey), $lang['iso_code']);
+                }
+            }
+        }
+    }
+
     private function saveLangValues($idPopup)
     {
         Db::getInstance()->delete('smart_popup_lang', 'id_popup = ' . (int) $idPopup);
@@ -359,13 +401,13 @@ class AdminSmartPopupController extends ModuleAdminController
 
     private function saveVariantValues($idPopup)
     {
+        $existingVariants = [];
         $variantRows = Db::getInstance()->executeS(
-            'SELECT id_variant FROM `' . _DB_PREFIX_ . 'smart_popup_variant` WHERE id_popup = ' . (int) $idPopup
+            'SELECT id_variant, variant_key FROM `' . _DB_PREFIX_ . 'smart_popup_variant` WHERE id_popup = ' . (int) $idPopup
         );
-        foreach ($variantRows as $row) {
-            Db::getInstance()->delete('smart_popup_variant_lang', 'id_variant = ' . (int) $row['id_variant']);
+        foreach ((array) $variantRows as $row) {
+            $existingVariants[$row['variant_key']] = (int) $row['id_variant'];
         }
-        Db::getInstance()->delete('smart_popup_variant', 'id_popup = ' . (int) $idPopup);
 
         $abEnabled = (int) Tools::getValue('ab_test_enabled');
         $trafficA = max(1, min(99, (int) Tools::getValue('variant_a_traffic', 50)));
@@ -386,16 +428,28 @@ class AdminSmartPopupController extends ModuleAdminController
         ];
 
         foreach ($variants as $key => $variant) {
-            Db::getInstance()->insert('smart_popup_variant', [
-                'id_popup' => (int) $idPopup,
-                'variant_key' => pSQL($key),
-                'name' => pSQL($variant['name']),
-                'active' => (int) $variant['active'],
-                'traffic_percentage' => (int) $variant['traffic_percentage'],
-                'date_add' => date('Y-m-d H:i:s'),
-                'date_upd' => date('Y-m-d H:i:s'),
-            ]);
-            $idVariant = (int) Db::getInstance()->Insert_ID();
+            if (isset($existingVariants[$key])) {
+                // Keep id_variant stable so visitor cookies and historical stats stay valid.
+                $idVariant = $existingVariants[$key];
+                Db::getInstance()->update('smart_popup_variant', [
+                    'name' => pSQL($variant['name']),
+                    'active' => (int) $variant['active'],
+                    'traffic_percentage' => (int) $variant['traffic_percentage'],
+                    'date_upd' => date('Y-m-d H:i:s'),
+                ], 'id_variant = ' . (int) $idVariant);
+                Db::getInstance()->delete('smart_popup_variant_lang', 'id_variant = ' . (int) $idVariant);
+            } else {
+                Db::getInstance()->insert('smart_popup_variant', [
+                    'id_popup' => (int) $idPopup,
+                    'variant_key' => pSQL($key),
+                    'name' => pSQL($variant['name']),
+                    'active' => (int) $variant['active'],
+                    'traffic_percentage' => (int) $variant['traffic_percentage'],
+                    'date_add' => date('Y-m-d H:i:s'),
+                    'date_upd' => date('Y-m-d H:i:s'),
+                ]);
+                $idVariant = (int) Db::getInstance()->Insert_ID();
+            }
 
             foreach (Language::getLanguages(false) as $lang) {
                 $idLang = (int) $lang['id_lang'];
@@ -521,21 +575,21 @@ class AdminSmartPopupController extends ModuleAdminController
 
         unset($popup['id_popup']);
         $popup['active'] = 0;
-        $popup['internal_name'] = pSQL($this->l('Copy of ') . $popup['internal_name']);
+        $popup['internal_name'] = $this->l('Copy of ') . $popup['internal_name'];
         $popup['date_add'] = date('Y-m-d H:i:s');
         $popup['date_upd'] = date('Y-m-d H:i:s');
-        Db::getInstance()->insert('smart_popup', $popup, true);
+        Db::getInstance()->insert('smart_popup', $this->escapeRow($popup, ['content']), true);
         $newId = (int) Db::getInstance()->Insert_ID();
 
         foreach (Db::getInstance()->executeS('SELECT * FROM `' . _DB_PREFIX_ . 'smart_popup_lang` WHERE id_popup = ' . (int) $idPopup) as $lang) {
             $lang['id_popup'] = $newId;
-            Db::getInstance()->insert('smart_popup_lang', $lang, true);
+            Db::getInstance()->insert('smart_popup_lang', $this->escapeRow($lang, ['content']), true);
         }
 
         foreach (Db::getInstance()->executeS('SELECT * FROM `' . _DB_PREFIX_ . 'smart_popup_targeting` WHERE id_popup = ' . (int) $idPopup) as $rule) {
             unset($rule['id_targeting']);
             $rule['id_popup'] = $newId;
-            Db::getInstance()->insert('smart_popup_targeting', $rule, true);
+            Db::getInstance()->insert('smart_popup_targeting', $this->escapeRow($rule), true);
         }
 
         foreach (Db::getInstance()->executeS('SELECT * FROM `' . _DB_PREFIX_ . 'smart_popup_variant` WHERE id_popup = ' . (int) $idPopup) as $variant) {
@@ -544,12 +598,12 @@ class AdminSmartPopupController extends ModuleAdminController
             $variant['id_popup'] = $newId;
             $variant['date_add'] = date('Y-m-d H:i:s');
             $variant['date_upd'] = date('Y-m-d H:i:s');
-            Db::getInstance()->insert('smart_popup_variant', $variant, true);
+            Db::getInstance()->insert('smart_popup_variant', $this->escapeRow($variant), true);
             $newVariantId = (int) Db::getInstance()->Insert_ID();
 
             foreach (Db::getInstance()->executeS('SELECT * FROM `' . _DB_PREFIX_ . 'smart_popup_variant_lang` WHERE id_variant = ' . $oldVariantId) as $variantLang) {
                 $variantLang['id_variant'] = $newVariantId;
-                Db::getInstance()->insert('smart_popup_variant_lang', $variantLang, true);
+                Db::getInstance()->insert('smart_popup_variant_lang', $this->escapeRow($variantLang, ['content']), true);
             }
         }
 
@@ -770,6 +824,18 @@ class AdminSmartPopupController extends ModuleAdminController
             return $existingPath;
         }
 
+        if (!is_uploaded_file($_FILES['bg_image']['tmp_name'])
+            || !@getimagesize($_FILES['bg_image']['tmp_name'])
+        ) {
+            $this->errors[] = $this->l('The uploaded file is not a valid image.');
+            return $existingPath;
+        }
+
+        if ((int) $_FILES['bg_image']['size'] > 4 * 1024 * 1024) {
+            $this->errors[] = $this->l('Image is too large (4 MB maximum).');
+            return $existingPath;
+        }
+
         $uploadDir = _PS_MODULE_DIR_ . 'ps_advanced_popup/views/img/';
         if (!is_dir($uploadDir)) {
             mkdir($uploadDir, 0755, true);
@@ -811,6 +877,26 @@ class AdminSmartPopupController extends ModuleAdminController
                 'target_value' => json_encode(array_values($ids)),
             ];
         }
+    }
+
+    /**
+     * Escape a raw DB row before re-inserting it with Db::insert (which does not escape).
+     *
+     * @param array $row
+     * @param array $htmlFields fields allowed to keep HTML
+     *
+     * @return array
+     */
+    private function escapeRow(array $row, array $htmlFields = [])
+    {
+        foreach ($row as $key => $value) {
+            if ($value === null || is_int($value) || is_float($value)) {
+                continue;
+            }
+            $row[$key] = pSQL((string) $value, in_array($key, $htmlFields, true));
+        }
+
+        return $row;
     }
 
     private function sanitizeChoice($value, $allowed, $default)
