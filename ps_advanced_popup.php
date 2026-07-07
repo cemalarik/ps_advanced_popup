@@ -1,10 +1,10 @@
 <?php
 /**
- * Advanced Smart Popup Module for PrestaShop
+ * Advanced Popup Studio for PrestaShop.
  *
- * @author    Your Name
- * @copyright 2024
- * @license   MIT
+ * @author    Advanced Popup Studio
+ * @copyright 2026
+ * @license   AFL-3.0
  */
 
 if (!defined('_PS_VERSION_')) {
@@ -19,8 +19,8 @@ class Ps_advanced_popup extends Module
     {
         $this->name = 'ps_advanced_popup';
         $this->tab = 'front_office_features';
-        $this->version = '1.0.0';
-        $this->author = 'Your Name';
+        $this->version = '2.0.0';
+        $this->author = 'Advanced Popup Studio';
         $this->need_instance = 0;
         $this->ps_versions_compliancy = [
             'min' => '1.7.0.0',
@@ -30,14 +30,11 @@ class Ps_advanced_popup extends Module
 
         parent::__construct();
 
-        $this->displayName = $this->l('Advanced Smart Popup');
-        $this->description = $this->l('Create targeted popups with smart triggers for your PrestaShop store.');
-        $this->confirmUninstall = $this->l('Are you sure you want to uninstall this module?');
+        $this->displayName = $this->l('Advanced Popup Studio');
+        $this->description = $this->l('Create premium, targeted popups with templates, A/B variants and anonymous analytics.');
+        $this->confirmUninstall = $this->l('Are you sure you want to uninstall Advanced Popup Studio? All popup data will be removed.');
     }
 
-    /**
-     * Module installation
-     */
     public function install()
     {
         return parent::install()
@@ -48,9 +45,6 @@ class Ps_advanced_popup extends Module
             && $this->installTab();
     }
 
-    /**
-     * Module uninstallation
-     */
     public function uninstall()
     {
         return parent::uninstall()
@@ -58,9 +52,6 @@ class Ps_advanced_popup extends Module
             && $this->uninstallTab();
     }
 
-    /**
-     * Install database tables
-     */
     private function installDb()
     {
         $sqlFile = dirname(__FILE__) . '/sql/install.sql';
@@ -71,22 +62,16 @@ class Ps_advanced_popup extends Module
         $sql = file_get_contents($sqlFile);
         $sql = str_replace(['PREFIX_', 'ENGINE_TYPE'], [_DB_PREFIX_, _MYSQL_ENGINE_], $sql);
 
-        $queries = preg_split('/;\s*[\r\n]+/', $sql);
-        foreach ($queries as $query) {
+        foreach (preg_split('/;\s*[\r\n]+/', $sql) as $query) {
             $query = trim($query);
-            if (!empty($query)) {
-                if (!Db::getInstance()->execute($query)) {
-                    return false;
-                }
+            if ($query !== '' && !Db::getInstance()->execute($query)) {
+                return false;
             }
         }
 
         return true;
     }
 
-    /**
-     * Uninstall database tables
-     */
     private function uninstallDb()
     {
         $sqlFile = dirname(__FILE__) . '/sql/uninstall.sql';
@@ -94,13 +79,10 @@ class Ps_advanced_popup extends Module
             return true;
         }
 
-        $sql = file_get_contents($sqlFile);
-        $sql = str_replace('PREFIX_', _DB_PREFIX_, $sql);
-
-        $queries = preg_split('/;\s*[\r\n]+/', $sql);
-        foreach ($queries as $query) {
+        $sql = str_replace('PREFIX_', _DB_PREFIX_, file_get_contents($sqlFile));
+        foreach (preg_split('/;\s*[\r\n]+/', $sql) as $query) {
             $query = trim($query);
-            if (!empty($query)) {
+            if ($query !== '') {
                 Db::getInstance()->execute($query);
             }
         }
@@ -108,9 +90,6 @@ class Ps_advanced_popup extends Module
         return true;
     }
 
-    /**
-     * Install admin tab
-     */
     private function installTab()
     {
         $tab = new Tab();
@@ -118,7 +97,7 @@ class Ps_advanced_popup extends Module
         $tab->class_name = 'AdminSmartPopup';
         $tab->name = [];
         foreach (Language::getLanguages(true) as $lang) {
-            $tab->name[$lang['id_lang']] = 'Smart Popup';
+            $tab->name[(int) $lang['id_lang']] = 'Popup Studio';
         }
         $tab->id_parent = (int) Tab::getIdFromClassName('AdminParentModulesSf');
         $tab->module = $this->name;
@@ -126,9 +105,6 @@ class Ps_advanced_popup extends Module
         return $tab->add();
     }
 
-    /**
-     * Uninstall admin tab
-     */
     private function uninstallTab()
     {
         $idTab = (int) Tab::getIdFromClassName('AdminSmartPopup');
@@ -136,54 +112,53 @@ class Ps_advanced_popup extends Module
             $tab = new Tab($idTab);
             return $tab->delete();
         }
+
         return true;
     }
 
-    /**
-     * Redirect to admin controller
-     */
     public function getContent()
     {
         Tools::redirectAdmin($this->context->link->getAdminLink('AdminSmartPopup'));
     }
 
-    /**
-     * Hook: displayHeader - Load CSS and JS
-     */
     public function hookDisplayHeader($params)
     {
         $popups = $this->getActivePopupsForCurrentPage();
-
         if (empty($popups)) {
             return '';
         }
 
         $this->context->controller->addCSS($this->_path . 'views/css/front.css');
-        $this->context->controller->addCSS($this->_path . 'views/css/animate.min.css');
         $this->context->controller->addJS($this->_path . 'views/js/front.js');
 
-        // JavaScript değişkenlerini header'da tanımla
         Media::addJsDef([
             'smartPopupData' => [
                 'popups' => $popups,
                 'ajaxUrl' => $this->context->link->getModuleLink($this->name, 'ajax'),
-                'currentPage' => $this->getCurrentPageType(),
+                'pageType' => $this->getCurrentPageType(),
+                'currentUrl' => $this->getCurrentUrl(),
                 'customerId' => (int) $this->context->customer->id,
                 'customerGroups' => $this->getCustomerGroups(),
+                'isLogged' => (bool) $this->context->customer->isLogged(),
                 'device' => $this->getDeviceType(),
+                'languageIso' => $this->context->language->iso_code,
+                'currencyIso' => $this->context->currency ? $this->context->currency->iso_code : '',
+                'cart' => $this->getCartSnapshot(),
+                'sessionKey' => $this->getVisitorSessionKey(),
+                'labels' => [
+                    'copied' => $this->l('Copied'),
+                    'copyFailed' => $this->l('Copy failed. Please copy the code manually.'),
+                    'connectionError' => $this->l('Connection error. Please try again.'),
+                ],
             ],
         ]);
 
         return '';
     }
 
-    /**
-     * Hook: displayFooter - Render popup HTML
-     */
     public function hookDisplayFooter($params)
     {
         $popups = $this->getActivePopupsForCurrentPage();
-
         if (empty($popups)) {
             return '';
         }
@@ -195,45 +170,33 @@ class Ps_advanced_popup extends Module
         return $this->display(__FILE__, 'views/templates/hook/popup.tpl');
     }
 
-    /**
-     * Hook: actionNewsletterRegistrationAfter
-     */
     public function hookActionNewsletterRegistrationAfter($params)
     {
-        // Can be used for additional newsletter integration
         return '';
     }
 
-    /**
-     * Get active popups for current page
-     */
     private function getActivePopupsForCurrentPage()
     {
         $cacheKey = $this->getCacheKey();
-
         if (Cache::isStored($cacheKey)) {
             return Cache::retrieve($cacheKey);
         }
 
-        $idLang = (int) $this->context->language->id;
-        $popups = SmartPopup::getActivePopupsWithTargeting($idLang);
+        $popups = SmartPopup::getActivePopupsWithTargeting(
+            (int) $this->context->language->id,
+            (int) $this->context->shop->id
+        );
 
         Cache::store($cacheKey, $popups);
 
         return $popups;
     }
 
-    /**
-     * Get cache key
-     */
     private function getCacheKey()
     {
-        return 'smart_popup_active_' . (int) $this->context->shop->id . '_' . (int) $this->context->language->id;
+        return 'smart_popup_runtime_' . (int) $this->context->shop->id . '_' . (int) $this->context->language->id;
     }
 
-    /**
-     * Clear popup cache
-     */
     public static function clearCache()
     {
         $shops = Shop::getShops(true, null, true);
@@ -241,19 +204,15 @@ class Ps_advanced_popup extends Module
 
         foreach ($shops as $idShop) {
             foreach ($languages as $lang) {
-                $cacheKey = 'smart_popup_active_' . (int) $idShop . '_' . (int) $lang['id_lang'];
-                Cache::clean($cacheKey);
+                Cache::clean('smart_popup_runtime_' . (int) $idShop . '_' . (int) $lang['id_lang']);
+                Cache::clean('smart_popup_active_' . (int) $idShop . '_' . (int) $lang['id_lang']);
             }
         }
     }
 
-    /**
-     * Get current page type
-     */
     private function getCurrentPageType()
     {
         $controller = Tools::getValue('controller');
-
         $pageTypes = [
             'index' => 'home',
             'category' => 'category',
@@ -261,29 +220,26 @@ class Ps_advanced_popup extends Module
             'cart' => 'cart',
             'order' => 'checkout',
             'order-opc' => 'checkout',
+            'search' => 'search',
+            'manufacturer' => 'brand',
+            'cms' => 'cms',
         ];
 
         return isset($pageTypes[$controller]) ? $pageTypes[$controller] : 'other';
     }
 
-    /**
-     * Get customer groups
-     */
     private function getCustomerGroups()
     {
         if ($this->context->customer->isLogged()) {
-            return $this->context->customer->getGroups();
+            return array_map('intval', $this->context->customer->getGroups());
         }
+
         return [(int) Configuration::get('PS_UNIDENTIFIED_GROUP')];
     }
 
-    /**
-     * Get device type
-     */
     private function getDeviceType()
     {
         $context = Context::getContext();
-
         if (method_exists($context, 'getMobileDevice') && $context->getMobileDevice()) {
             return 'mobile';
         }
@@ -297,5 +253,50 @@ class Ps_advanced_popup extends Module
         }
 
         return 'desktop';
+    }
+
+    private function getCartSnapshot()
+    {
+        $snapshot = [
+            'total' => 0,
+            'productIds' => [],
+            'categoryIds' => [],
+        ];
+
+        if (!$this->context->cart || !(int) $this->context->cart->id) {
+            return $snapshot;
+        }
+
+        $snapshot['total'] = (float) $this->context->cart->getOrderTotal(false, Cart::BOTH_WITHOUT_SHIPPING);
+        foreach ($this->context->cart->getProducts() as $product) {
+            $idProduct = (int) $product['id_product'];
+            $snapshot['productIds'][] = $idProduct;
+            if (!empty($product['id_category_default'])) {
+                $snapshot['categoryIds'][] = (int) $product['id_category_default'];
+            }
+        }
+
+        $snapshot['productIds'] = array_values(array_unique($snapshot['productIds']));
+        $snapshot['categoryIds'] = array_values(array_unique($snapshot['categoryIds']));
+
+        return $snapshot;
+    }
+
+    private function getCurrentUrl()
+    {
+        $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
+        $host = isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : '';
+        $uri = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '';
+
+        return $scheme . $host . $uri;
+    }
+
+    private function getVisitorSessionKey()
+    {
+        if (empty($this->context->cookie->smart_popup_session_key)) {
+            $this->context->cookie->smart_popup_session_key = sha1(uniqid('smart_popup_', true));
+        }
+
+        return $this->context->cookie->smart_popup_session_key;
     }
 }

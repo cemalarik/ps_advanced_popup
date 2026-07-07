@@ -1,303 +1,190 @@
-# PrestaShop Advanced Smart Popup Module
+# Advanced Popup Studio for PrestaShop
 
-**Version:** 1.0.0  
-**Compatibility:** PrestaShop 1.7.0.0 - 8.x  
-**License:** Academic Free License (AFL 3.0)
+Advanced Popup Studio is a PrestaShop module for building targeted, accessible, conversion-focused popups from the back office. It includes campaign presets, A/B variants, coupon and newsletter flows, rule-based targeting, live preview, and anonymous event analytics.
 
-## Description
-
-Create targeted, high-converting popups with smart triggers for your PrestaShop store. Perfect for newsletter subscriptions, promotional campaigns, exit-intent offers, and more.
+> This is an independent open-source module. It is not an official PrestaShop product.
 
 ## Features
 
-- ✅ Multiple popup types (HTML, Image, Newsletter)
-- ✅ Smart triggers (Page Load, Exit Intent, Scroll, Inactivity)
-- ✅ Advanced targeting (Pages, Customer Groups, Devices)
-- ✅ Frequency control with cookie management
-- ✅ Beautiful animations (Animate.css integration)
-- ✅ Built-in newsletter subscription with AJAX
-- ✅ Statistics dashboard (Impressions, Conversions)
-- ✅ Multi-language support
-- ✅ Responsive design (Mobile-friendly)
-- ✅ No core file modifications
-- ✅ SEO-friendly (Google mobile guidelines compliant)
+- Custom back-office dashboard with campaign status, date range, trigger, targeting summary, impressions, conversions, close rate, and conversion rate.
+- Guided popup editor with steps for goal, content, design, targeting, preview, and publishing.
+- Built-in campaign presets:
+  - newsletter discount
+  - exit-intent coupon
+  - cart reminder
+  - free shipping
+  - product upsell
+  - image campaign
+  - announcement
+- Desktop, tablet, and mobile preview in the editor.
+- A/B variant support with traffic split and a default winner metric of `conversion_rate`.
+- Targeting rules for page type, URL, device, customer group, login state, language, currency, cart total, cart products, and cart categories.
+- Accessible front-office dialog with `role="dialog"`, `aria-modal`, focus trap, ESC close, focus restore, visible focus states, and reduced-motion support.
+- Mobile bottom sheet behavior by default, with modal and hidden mobile options.
+- Coupon flow with one-click copy, success state, and coupon copy tracking.
+- Newsletter flow with submit, success, and error tracking.
+- Anonymous event analytics for impressions, closes, CTA clicks, newsletter outcomes, coupon copies, and variant assignment.
+- Local chart helper and module assets. No CDN dependency is required.
+
+## Compatibility
+
+| Requirement | Status |
+| --- | --- |
+| PrestaShop | Verified on `1.7.8.11`; designed for the legacy module runtime used by PrestaShop `1.7.8.x` and `8.x` |
+| PHP | `>= 7.2` |
+| Database | MySQL or MariaDB supported by PrestaShop |
+| Browser | Modern browsers with progressive fallback for clipboard copy |
+
+PrestaShop `8.x` should be tested in your target shop before production use. The main development and browser verification environment for this release was PrestaShop `1.7.8.11`.
+
+## Fresh Install Notice
+
+Version `2.0.0` uses a new fresh-install schema. It is not a migration-preserving upgrade from older `1.x` data.
+
+On install, the module creates:
+
+- `ps_smart_popup`
+- `ps_smart_popup_lang`
+- `ps_smart_popup_variant`
+- `ps_smart_popup_variant_lang`
+- `ps_smart_popup_targeting`
+- `ps_smart_popup_event`
+- `ps_smart_popup_stats_daily`
+- `ps_smart_popup_subscriber`
+- `ps_smart_popup_coupon_event`
+
+On uninstall, these module tables are removed. Back up any production data before uninstalling.
 
 ## Installation
 
-1. Download the module ZIP file
-2. Go to **Back Office > Modules > Module Manager**
-3. Click **Upload a module**
-4. Select the ZIP file
-5. Click **Configure** to create your first popup
+1. Copy or clone this repository into your PrestaShop modules directory as:
 
-## Quick Start
+   ```bash
+   modules/ps_advanced_popup
+   ```
 
-1. Navigate to **Modules > Smart Popup**
-2. Click **Add New Popup**
-3. Fill in the basic settings:
-   - Title (internal reference)
-   - Popup Type (HTML/Image/Newsletter)
-   - Content
-4. Configure trigger settings
-5. Set targeting rules
-6. Save and activate
+2. Install the module from the back office:
 
-## Popup Types
+   ```text
+   Modules > Module Manager > Advanced Popup Studio > Install
+   ```
 
-| Type | Description | Best For |
-|------|-------------|----------|
-| **HTML Content** | Rich text with TinyMCE editor | Announcements, promotions |
-| **Image Only** | Single clickable image | Visual campaigns, banners |
-| **Newsletter** | Email subscription form | Lead generation |
+3. Open the module workspace:
 
-## Trigger Types
+   ```text
+   Modules > Popup Studio
+   ```
 
-| Trigger | Description | Value |
-|---------|-------------|-------|
-| **On Page Load** | Shows after X seconds | Seconds (e.g., 5) |
-| **Exit Intent** | Mouse leaves viewport (Desktop) | Not required |
-| **Scroll Percentage** | User scrolls X% of page | Percentage (e.g., 50) |
-| **Inactivity** | No user activity for X seconds | Seconds (e.g., 30) |
+Optional CLI install:
 
-## Targeting Options
-
-### Page Targeting
-- All Pages
-- Homepage only
-- Category Pages
-- Product Pages
-- Cart
-- Checkout
-
-### Customer Group Targeting
-- Visitors (Guest)
-- Registered Customers
-- Custom Groups (VIP, Wholesale, etc.)
-
-### Device Targeting
-- Desktop
-- Tablet
-- Mobile
-
-## Configuration
-
-### General Settings
-
-| Setting | Description | Default |
-|---------|-------------|---------|
-| Active | Enable/disable popup | No |
-| Title | Internal identification | - |
-| Popup Type | HTML/Image/Newsletter | HTML |
-| Start Date | When popup becomes active | Immediate |
-| End Date | When popup expires | Never |
-| Priority | Higher = shown first | 0 |
-
-### Design Settings
-
-| Setting | Description | Default |
-|---------|-------------|---------|
-| Content | HTML content (TinyMCE) | - |
-| CTA Button Text | Call-to-action text | - |
-| CTA Button URL | Button link | - |
-| Width | Popup width in pixels | 600px |
-| Background Color | Hex color code | #ffffff |
-| Background Image | Optional image | - |
-| Border Radius | Corner roundness | 8px |
-| Overlay Opacity | Background darkness (0-1) | 0.5 |
-| Animation | Entry animation | fadeIn |
-| Close Button Style | X button appearance | Default |
-| Hide on Mobile | Don't show on phones | No |
-
-### Frequency Settings
-
-| Setting | Description | Default |
-|---------|-------------|---------|
-| Show Again After | Days before reshowing | 1 day |
-
-## Animations
-
-Available animations (Animate.css):
-- Fade In
-- Fade In Down
-- Fade In Up
-- Bounce In
-- Zoom In
-- Slide In Down
-- Slide In Up
-
-## Statistics
-
-Track popup performance in the admin panel:
-
-- **Impressions**: Number of times popup was shown
-- **Conversions**: Newsletter signups or CTA clicks
-- **Conversion Rate**: Percentage of conversions
-- **Daily/Weekly/Monthly** breakdowns
-- **Visual charts** for trend analysis
-
-## Hooks Used
-
-| Hook | Purpose |
-|------|---------|
-| `displayHeader` | Load CSS/JS assets |
-| `displayFooter` | Render popup HTML |
-| `actionNewsletterRegistrationAfter` | Newsletter integration |
-
-## Database Tables
-
-```sql
-ps_smart_popup           -- Main popup settings
-ps_smart_popup_lang      -- Multi-language content
-ps_smart_popup_targeting -- Targeting rules
-ps_smart_popup_stats     -- Statistics data
+```bash
+php bin/console prestashop:module install ps_advanced_popup
 ```
+
+If you are reinstalling during development, use PrestaShop's module reset command or uninstall/install again so the fresh schema is recreated.
+
+## Admin Workflow
+
+1. Open `Modules > Popup Studio`.
+2. Choose a preset template or start a new campaign.
+3. Fill localized content: title, subtitle, body, CTA, coupon, consent text, and success message.
+4. Configure layout, colors, width, radius, overlay opacity, close behavior, animation, and mobile behavior.
+5. Configure trigger and targeting rules.
+6. Preview desktop, tablet, and mobile states.
+7. Enable publishing and save.
+8. Review anonymous performance analytics from the campaign stats page.
+
+## Front-Office Behavior
+
+Supported triggers:
+
+- load delay
+- exit intent
+- scroll depth
+- inactivity
+
+Supported layouts:
+
+- centered modal
+- image top
+- image left
+- image right
+- full image
+- compact coupon
+- newsletter
+
+The front popup is rendered as an accessible modal dialog. On mobile, the default behavior is a bottom sheet that keeps the close button reachable and avoids taking over the entire viewport.
+
+## Analytics and Privacy
+
+The analytics model is intentionally lightweight and anonymous.
+
+Tracked event types include:
+
+- `impression`
+- `close`
+- `cta_click`
+- `newsletter_submit`
+- `newsletter_success`
+- `newsletter_error`
+- `coupon_copy`
+- `variant_assignment`
+
+The event table stores popup, variant, shop, language, device, page type, session key, URL hash, event type, timestamp, and optional event metadata. It does not store full visited URLs in the analytics table.
+
+Newsletter submissions can store an email address in `ps_smart_popup_subscriber` when the visitor submits the form. Coupon copy events can store coupon mapping data in `ps_smart_popup_coupon_event`.
+
+You are responsible for showing any cookie, tracking, newsletter, or marketing consent notices required in your jurisdiction.
 
 ## AJAX Endpoints
 
-The module provides AJAX endpoints for:
-- Newsletter subscription
-- Statistics tracking (impressions/conversions)
+The module front controller supports these actions:
 
-## Cookie Management
+- `track_event`
+- `newsletter_subscribe`
+- `coupon_copy`
+- `cta_click`
+- `preview_render`
 
-- Cookie name: `smart_popup_{id}`
-- Set when user closes popup
-- Duration: Configurable (default 1 day)
-- Permanent cookie on newsletter conversion
+The endpoint is generated through PrestaShop's module link system and exposed to the front script through `smartPopupData.ajaxUrl`.
 
-## Mobile Optimization
+## Development
 
-Following Google's mobile popup guidelines:
-- Popup doesn't cover entire screen on mobile
-- Easy-to-tap close button (44x44px minimum)
-- Option to hide on mobile devices
-- Bottom-aligned on small screens
+Useful checks:
 
-## Performance
+```bash
+# PHP syntax check from the PrestaShop root
+find modules/ps_advanced_popup -name '*.php' -print0 | xargs -0 -n1 php -l
 
-- CSS/JS loaded only when popups exist
-- Client-side rule evaluation (no extra AJAX)
-- Popup data cached server-side
-- Async/defer script loading
-- Minimal impact on LCP/CLS metrics
-
-## File Structure
-
-```
-ps_advanced_popup/
-├── ps_advanced_popup.php      # Main module file
-├── config.xml                  # Module configuration
-├── composer.json               # Composer autoload
-├── index.php                   # Security file
-├── logo.png                    # Module logo
-├── logo.svg                    # SVG logo
-├── README.md                   # This file
-├── CHANGELOG.md                # Version history
-├── LICENSE.md                  # AFL 3.0 license
-│
-├── classes/
-│   ├── SmartPopup.php          # ObjectModel
-│   └── SmartPopupValidator.php # Validation helper
-│
-├── controllers/
-│   ├── admin/
-│   │   └── AdminSmartPopupController.php
-│   └── front/
-│       └── ajax.php            # AJAX handler
-│
-├── sql/
-│   ├── install.sql
-│   └── uninstall.sql
-│
-├── translations/
-│   ├── en.php
-│   └── tr.php
-│
-├── upgrade/
-│   └── upgrade-1.0.1.php
-│
-├── vendor/
-│   └── autoload.php
-│
-├── views/
-│   ├── css/
-│   │   ├── front.css           # Frontend styles
-│   │   ├── back.css            # Admin styles
-│   │   └── animate.min.css     # Animations
-│   ├── js/
-│   │   ├── front.js            # Frontend logic
-│   │   └── back.js             # Admin logic
-│   └── templates/
-│       ├── admin/
-│       │   └── stats.tpl       # Statistics page
-│       └── hook/
-│           └── popup.tpl       # Popup template
-│
-└── docs/
-    ├── SRS.md                  # Requirements spec
-    ├── DEVELOPMENT_OVERVIEW.md
-    ├── PHASE_1.md
-    ├── PHASE_2.md
-    ├── PHASE_3.md
-    └── PHASE_4.md
+# JavaScript syntax checks from the module root
+node --check views/js/front.js
+node --check views/js/back.js
+node --check views/js/vendor/chart-lite.js
 ```
 
-## Customization
+For a clean development database, uninstall and reinstall the module or run a module reset in your local PrestaShop environment.
 
-### Custom Styling
+## Project Structure
 
-Override styles in your theme:
-
-```css
-/* In your theme's custom.css */
-.smart-popup-container {
-    /* Your custom styles */
-}
-
-.smart-popup-close {
-    /* Custom close button */
-}
+```text
+classes/                       Object model, validation, stats helpers
+controllers/admin/             Custom back-office dashboard, editor, stats
+controllers/front/             AJAX tracking, newsletter, coupon, CTA handlers
+sql/                           Fresh install and uninstall schema
+translations/                  Legacy module translations
+views/css/                     Back-office and front-office styles
+views/js/                      Admin wizard, front runtime, local chart helper
+views/templates/admin/         Dashboard, editor, stats templates
+views/templates/hook/          Front popup template
 ```
 
-### Custom Templates
+## Known Limitations
 
-Copy templates to your theme folder:
-```
-themes/your-theme/modules/ps_advanced_popup/views/templates/hook/popup.tpl
-```
-
-## Troubleshooting
-
-### Popup not showing
-1. Check if popup is active
-2. Verify date range (start/end dates)
-3. Check targeting rules match current page
-4. Clear browser cookies
-5. Check browser console for JS errors
-
-### Newsletter not working
-1. Verify AJAX URL is accessible
-2. Check if ps_emailsubscription module is installed
-3. Review browser network tab for errors
-
-### Statistics not recording
-1. Ensure AJAX endpoint is accessible
-2. Check for JavaScript errors
-3. Verify database tables exist
-
-## Uninstallation
-
-1. Go to **Back Office > Modules > Module Manager**
-2. Find "Advanced Smart Popup"
-3. Click **Uninstall**
-
-**Warning:** Uninstalling will delete all popup data and statistics.
-
-## Support
-
-For issues or feature requests, please contact the developer.
+- Existing `1.x` popup data is not migrated automatically.
+- The module is designed for PrestaShop's legacy module controller/template system, not a Symfony back-office page.
+- A/B testing currently supports two variants per popup.
+- Analytics are module-local and anonymous; they are not a replacement for a dedicated analytics platform.
 
 ## License
 
-This module is licensed under the Academic Free License (AFL 3.0).
-See LICENSE.md for full terms.
+Released under the [AFL-3.0](LICENSE.md) license.

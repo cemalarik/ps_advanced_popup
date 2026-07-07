@@ -12,8 +12,5 @@ if (!defined('_PS_VERSION_')) {
 
 function upgrade_module_1_0_1($module)
 {
-    // Example upgrade script
-    // Add new configuration values, alter tables, etc.
-
     return true;
 }

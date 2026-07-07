@@ -1,7 +1,6 @@
 <?php
 /**
- * SmartPopup Validator Class
- * Security and validation helpers
+ * Validation helpers for Advanced Popup Studio.
  */
 
 if (!defined('_PS_VERSION_')) {
@@ -10,132 +9,76 @@ if (!defined('_PS_VERSION_')) {
 
 class SmartPopupValidator
 {
-    /**
-     * Validate popup data before save
-     */
     public static function validatePopupData($data)
     {
         $errors = [];
 
-        // Title validation
-        if (isset($data['title'])) {
-            foreach ($data['title'] as $idLang => $title) {
-                if (!empty($title) && !Validate::isGenericName($title)) {
-                    $errors[] = 'Invalid title for language ' . $idLang;
-                }
-            }
+        $validPopupTypes = ['newsletter', 'coupon', 'cta', 'image', 'announcement'];
+        $validTriggers = ['load', 'exit', 'scroll', 'inactivity'];
+        $validLayouts = ['centered', 'image_top', 'image_left', 'image_right', 'full_image', 'compact_coupon', 'newsletter'];
+        $validMobile = ['bottom_sheet', 'modal', 'hidden'];
+
+        if (isset($data['popup_type']) && !in_array($data['popup_type'], $validPopupTypes)) {
+            $errors[] = 'Invalid popup type';
+        }
+        if (isset($data['trigger_type']) && !in_array($data['trigger_type'], $validTriggers)) {
+            $errors[] = 'Invalid trigger type';
+        }
+        if (isset($data['layout']) && !in_array($data['layout'], $validLayouts)) {
+            $errors[] = 'Invalid layout';
+        }
+        if (isset($data['mobile_behavior']) && !in_array($data['mobile_behavior'], $validMobile)) {
+            $errors[] = 'Invalid mobile behavior';
         }
 
-        // Content validation (HTML)
-        if (isset($data['content'])) {
-            foreach ($data['content'] as $idLang => $content) {
-                if (!empty($content) && !Validate::isCleanHtml($content)) {
-                    $errors[] = 'Invalid HTML content for language ' . $idLang;
-                }
-            }
-        }
-
-        // URL validation
-        if (isset($data['cta_url'])) {
-            foreach ($data['cta_url'] as $idLang => $url) {
-                if (!empty($url) && !Validate::isUrl($url)) {
-                    $errors[] = 'Invalid URL for language ' . $idLang;
-                }
-            }
-        }
-
-        // Numeric validations
-        $numericFields = ['width', 'border_radius', 'trigger_value', 'frequency_days', 'priority'];
-        foreach ($numericFields as $field) {
+        foreach (['width', 'border_radius', 'trigger_value', 'frequency_days', 'priority'] as $field) {
             if (isset($data[$field]) && !Validate::isUnsignedInt($data[$field])) {
                 $errors[] = 'Invalid value for ' . $field;
             }
         }
 
-        // Float validation
-        if (isset($data['overlay_opacity'])) {
-            $opacity = (float) $data['overlay_opacity'];
-            if ($opacity < 0 || $opacity > 1) {
-                $errors[] = 'Overlay opacity must be between 0 and 1';
+        foreach (['bg_color', 'text_color', 'accent_color', 'button_color', 'button_text_color'] as $field) {
+            if (isset($data[$field]) && !preg_match('/^#[0-9A-Fa-f]{6}$/', $data[$field])) {
+                $errors[] = 'Invalid color for ' . $field;
             }
         }
 
-        // Color validation
-        if (isset($data['bg_color']) && !preg_match('/^#[0-9A-Fa-f]{6}$/', $data['bg_color'])) {
-            $errors[] = 'Invalid background color format';
-        }
-
-        // Enum validations
-        $validPopupTypes = ['image', 'html', 'newsletter'];
-        if (isset($data['popup_type']) && !in_array($data['popup_type'], $validPopupTypes)) {
-            $errors[] = 'Invalid popup type';
-        }
-
-        $validTriggerTypes = ['load', 'exit', 'scroll', 'inactivity'];
-        if (isset($data['trigger_type']) && !in_array($data['trigger_type'], $validTriggerTypes)) {
-            $errors[] = 'Invalid trigger type';
+        if (isset($data['overlay_opacity'])) {
+            $opacity = (float) $data['overlay_opacity'];
+            if ($opacity < 0 || $opacity > 0.85) {
+                $errors[] = 'Overlay opacity must be between 0 and 0.85';
+            }
         }
 
         return $errors;
     }
 
-    /**
-     * Sanitize popup data
-     */
     public static function sanitizePopupData(&$data)
     {
-        // Sanitize strings
-        if (isset($data['title'])) {
-            foreach ($data['title'] as &$title) {
-                $title = Tools::htmlentitiesUTF8($title);
-            }
-        }
-
-        // Sanitize HTML content
-        if (isset($data['content'])) {
-            foreach ($data['content'] as &$content) {
-                $content = Tools::purifyHTML($content);
-            }
-        }
-
-        // Sanitize URLs
-        if (isset($data['cta_url'])) {
-            foreach ($data['cta_url'] as &$url) {
-                $url = filter_var($url, FILTER_SANITIZE_URL);
-            }
-        }
-
-        // Sanitize numeric values
-        $numericFields = ['width', 'border_radius', 'trigger_value', 'frequency_days', 'priority'];
-        foreach ($numericFields as $field) {
+        foreach (['width', 'border_radius', 'trigger_value', 'frequency_days', 'priority'] as $field) {
             if (isset($data[$field])) {
                 $data[$field] = abs((int) $data[$field]);
             }
         }
 
-        // Sanitize float
         if (isset($data['overlay_opacity'])) {
-            $data['overlay_opacity'] = max(0, min(1, (float) $data['overlay_opacity']));
+            $data['overlay_opacity'] = max(0, min(0.85, (float) $data['overlay_opacity']));
+        }
+
+        foreach (['internal_name', 'campaign_goal', 'template_key', 'layout', 'mobile_behavior'] as $field) {
+            if (isset($data[$field])) {
+                $data[$field] = Tools::htmlentitiesUTF8(trim($data[$field]));
+            }
         }
 
         return $data;
     }
 
-    /**
-     * Validate email for newsletter
-     */
     public static function validateEmail($email)
     {
-        if (empty($email)) {
-            return false;
-        }
-
-        return Validate::isEmail($email);
+        return !empty($email) && Validate::isEmail($email);
     }
 
-    /**
-     * Sanitize email
-     */
     public static function sanitizeEmail($email)
     {
         return filter_var(trim($email), FILTER_SANITIZE_EMAIL);

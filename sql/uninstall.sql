@@ -1,4 +1,10 @@
+DROP TABLE IF EXISTS `PREFIX_smart_popup_coupon_event`;
+DROP TABLE IF EXISTS `PREFIX_smart_popup_subscriber`;
+DROP TABLE IF EXISTS `PREFIX_smart_popup_stats_daily`;
 DROP TABLE IF EXISTS `PREFIX_smart_popup_stats`;
+DROP TABLE IF EXISTS `PREFIX_smart_popup_event`;
 DROP TABLE IF EXISTS `PREFIX_smart_popup_targeting`;
+DROP TABLE IF EXISTS `PREFIX_smart_popup_variant_lang`;
+DROP TABLE IF EXISTS `PREFIX_smart_popup_variant`;
 DROP TABLE IF EXISTS `PREFIX_smart_popup_lang`;
 DROP TABLE IF EXISTS `PREFIX_smart_popup`;

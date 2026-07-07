@@ -1,398 +1,503 @@
-/**
- * Smart Popup Front-End JavaScript
- * Handles triggers, cookie management, and interactions
- */
-
 (function () {
     'use strict';
 
-    // Configuration
     var config = window.smartPopupData || {};
     var popups = config.popups || [];
     var shownPopups = [];
+    var activeOverlay = null;
+    var lastFocusedElement = null;
 
-    // Cookie helpers
     var Cookie = {
         set: function (name, value, days) {
             var expires = '';
-            if (days) {
+            if (days > 0) {
                 var date = new Date();
                 date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
                 expires = '; expires=' + date.toUTCString();
             }
-            document.cookie = name + '=' + (value || '') + expires + '; path=/';
+            document.cookie = name + '=' + encodeURIComponent(value || '') + expires + '; path=/; SameSite=Lax';
         },
-
         get: function (name) {
             var nameEQ = name + '=';
-            var ca = document.cookie.split(';');
-            for (var i = 0; i < ca.length; i++) {
-                var c = ca[i];
-                while (c.charAt(0) === ' ') c = c.substring(1, c.length);
-                if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+            var parts = document.cookie.split(';');
+            for (var i = 0; i < parts.length; i++) {
+                var part = parts[i];
+                while (part.charAt(0) === ' ') {
+                    part = part.substring(1);
+                }
+                if (part.indexOf(nameEQ) === 0) {
+                    return decodeURIComponent(part.substring(nameEQ.length));
+                }
             }
             return null;
-        },
-
-        remove: function (name) {
-            document.cookie = name + '=; Max-Age=-99999999; path=/';
         }
     };
 
-    // Popup Manager
-    var PopupManager = {
-
-        init: function () {
-            if (!popups.length) return;
-
-            this.bindGlobalEvents();
-            this.processPopups();
-        },
-
-        bindGlobalEvents: function () {
-            var self = this;
-
-            // ESC key to close
-            document.addEventListener('keydown', function (e) {
-                if (e.key === 'Escape' || e.keyCode === 27) {
-                    self.closeAllPopups();
-                }
-            });
-
-            // Click on overlay to close
-            document.addEventListener('click', function (e) {
-                if (e.target.classList.contains('smart-popup-overlay')) {
-                    self.closePopup(e.target);
-                }
-            });
-
-            // Close button click
-            document.querySelectorAll('.smart-popup-close').forEach(function (btn) {
-                btn.addEventListener('click', function () {
-                    var overlay = this.closest('.smart-popup-overlay');
-                    self.closePopup(overlay);
-                });
-            });
-
-            // Newsletter form submit
-            document.querySelectorAll('.smart-popup-newsletter-form').forEach(function (form) {
-                form.addEventListener('submit', function (e) {
-                    e.preventDefault();
-                    self.handleNewsletterSubmit(this);
-                });
-            });
-        },
-
-        processPopups: function () {
-            var self = this;
-
-            popups.forEach(function (popup) {
-                // Check if already shown (cookie)
-                if (self.isPopupSuppressed(popup.id_popup)) {
-                    return;
-                }
-
-                // Check targeting rules
-                if (!self.checkTargeting(popup)) {
-                    return;
-                }
-
-                // Check device visibility
-                if (popup.hide_on_mobile == 1 && config.device === 'mobile') {
-                    return;
-                }
-
-                // Setup trigger
-                self.setupTrigger(popup);
-            });
-        },
-
-        isPopupSuppressed: function (popupId) {
-            return Cookie.get('smart_popup_' + popupId) !== null;
-        },
-
-        suppressPopup: function (popupId, days) {
-            Cookie.set('smart_popup_' + popupId, '1', days);
-        },
-
-        checkTargeting: function (popup) {
-            var targeting = popup.targeting || [];
-
-            // No targeting rules = show everywhere
-            if (!targeting.length) {
-                return true;
-            }
-
-            var checks = {
-                page: false,
-                category: false,
-                customer_group: false,
-                device: false
-            };
-
-            var hasRule = {
-                page: false,
-                category: false,
-                customer_group: false,
-                device: false
-            };
-
-            targeting.forEach(function (rule) {
-                var ids;
-                try {
-                    ids = JSON.parse(rule.target_ids || '[]');
-                } catch (e) {
-                    ids = [];
-                }
-                hasRule[rule.target_type] = true;
-
-                switch (rule.target_type) {
-                    case 'page':
-                        if (ids.includes('all') || ids.includes(config.currentPage)) {
-                            checks.page = true;
-                        }
-                        break;
-
-                    case 'category':
-                        var currentCategory = window.prestashop && window.prestashop.category
-                            ? window.prestashop.category.id : null;
-                        if (currentCategory && ids.includes(currentCategory)) {
-                            checks.category = true;
-                        }
-                        break;
-
-                    case 'customer_group':
-                        var customerGroups = config.customerGroups || [];
-                        if (ids.some(function (id) { return customerGroups.includes(parseInt(id)); })) {
-                            checks.customer_group = true;
-                        }
-                        break;
-
-                    case 'device':
-                        if (ids.includes(config.device)) {
-                            checks.device = true;
-                        }
-                        break;
-                }
-            });
-
-            // All defined rules must pass
-            for (var type in hasRule) {
-                if (hasRule[type] && !checks[type]) {
-                    return false;
-                }
-            }
-
-            return true;
-        },
-
-        setupTrigger: function (popup) {
-            var self = this;
-            var overlay = document.querySelector('[data-popup-id="' + popup.id_popup + '"]');
-
-            if (!overlay) return;
-
-            switch (popup.trigger_type) {
-                case 'load':
-                    var delay = (parseInt(popup.trigger_value) || 0) * 1000;
-                    setTimeout(function () {
-                        self.showPopup(overlay, popup);
-                    }, delay);
-                    break;
-
-                case 'exit':
-                    if (config.device === 'desktop') {
-                        var exitTriggered = false;
-                        document.addEventListener('mouseout', function (e) {
-                            if (exitTriggered) return;
-                            if (e.clientY < 10 && e.relatedTarget === null) {
-                                exitTriggered = true;
-                                self.showPopup(overlay, popup);
-                            }
-                        });
-                    }
-                    break;
-
-                case 'scroll':
-                    var scrollPercent = parseInt(popup.trigger_value) || 50;
-                    var scrollTriggered = false;
-
-                    window.addEventListener('scroll', function () {
-                        if (scrollTriggered) return;
-
-                        var scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-                        var docHeight = document.documentElement.scrollHeight - window.innerHeight;
-                        var currentPercent = (scrollTop / docHeight) * 100;
-
-                        if (currentPercent >= scrollPercent) {
-                            scrollTriggered = true;
-                            self.showPopup(overlay, popup);
-                        }
-                    });
-                    break;
-
-                case 'inactivity':
-                    var inactivityTime = (parseInt(popup.trigger_value) || 30) * 1000;
-                    var inactivityTimer;
-                    var inactivityTriggered = false;
-
-                    var resetTimer = function () {
-                        if (inactivityTriggered) return;
-                        clearTimeout(inactivityTimer);
-                        inactivityTimer = setTimeout(function () {
-                            inactivityTriggered = true;
-                            self.showPopup(overlay, popup);
-                        }, inactivityTime);
-                    };
-
-                    ['mousemove', 'keydown', 'scroll', 'touchstart'].forEach(function (event) {
-                        document.addEventListener(event, resetTimer, { passive: true });
-                    });
-
-                    resetTimer();
-                    break;
-            }
-        },
-
-        showPopup: function (overlay, popup) {
-            // Prevent showing multiple popups
-            if (shownPopups.includes(popup.id_popup)) {
-                return;
-            }
-
-            // Check priority - only show highest priority popup
-            var activeOverlay = document.querySelector('.smart-popup-overlay.active');
-            if (activeOverlay) {
-                var activeId = activeOverlay.getAttribute('data-popup-id');
-                var activePopup = popups.find(function (p) { return p.id_popup == activeId; });
-                if (activePopup && parseInt(activePopup.priority) >= parseInt(popup.priority)) {
-                    return;
-                }
-                this.closePopup(activeOverlay);
-            }
-
-            shownPopups.push(popup.id_popup);
-
-            // Show overlay
-            overlay.style.display = 'flex';
-
-            // Trigger reflow for animation
-            overlay.offsetHeight;
-
-            overlay.classList.add('active');
-
-            // Track impression
-            this.trackStat(popup.id_popup, 'impression');
-
-            // Prevent body scroll
-            document.body.style.overflow = 'hidden';
-        },
-
-        closePopup: function (overlay) {
-            if (!overlay) return;
-
-            var popupId = overlay.getAttribute('data-popup-id');
-            var frequencyDays = parseInt(overlay.getAttribute('data-frequency-days')) || 1;
-
-            overlay.classList.remove('active');
-
-            setTimeout(function () {
-                overlay.style.display = 'none';
-            }, 300);
-
-            // Set suppression cookie
-            this.suppressPopup(popupId, frequencyDays);
-
-            // Restore body scroll
-            document.body.style.overflow = '';
-        },
-
-        closeAllPopups: function () {
-            var self = this;
-            document.querySelectorAll('.smart-popup-overlay.active').forEach(function (overlay) {
-                self.closePopup(overlay);
-            });
-        },
-
-        handleNewsletterSubmit: function (form) {
-            var self = this;
-            var emailInput = form.querySelector('input[name="email"]');
-            var email = emailInput.value;
-            var popupId = form.getAttribute('data-popup-id');
-            var messageEl = form.parentNode.querySelector('.newsletter-message');
-            var submitBtn = form.querySelector('button[type="submit"]');
-            var originalText = submitBtn.textContent;
-
-            // Disable button
-            submitBtn.disabled = true;
-            submitBtn.textContent = '...';
-
-            // AJAX request
-            var xhr = new XMLHttpRequest();
-            xhr.open('POST', config.ajaxUrl, true);
-            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-
-            xhr.onload = function () {
-                var response;
-                try {
-                    response = JSON.parse(xhr.responseText);
-                } catch (e) {
-                    response = { success: false, message: 'An error occurred' };
-                }
-
-                messageEl.style.display = 'block';
-                messageEl.className = 'newsletter-message ' + (response.success ? 'success' : 'error');
-                messageEl.textContent = response.message;
-
-                if (response.success) {
-                    // Track conversion
-                    self.trackStat(popupId, 'conversion');
-
-                    // Set permanent suppression cookie
-                    self.suppressPopup(popupId, 365);
-
-                    // Hide form
-                    form.style.display = 'none';
-
-                    // Close popup after delay
-                    setTimeout(function () {
-                        var overlay = document.querySelector('[data-popup-id="' + popupId + '"]');
-                        self.closePopup(overlay);
-                    }, 2000);
-                } else {
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = originalText;
-                }
-            };
-
-            xhr.onerror = function () {
-                messageEl.style.display = 'block';
-                messageEl.className = 'newsletter-message error';
-                messageEl.textContent = 'Connection error. Please try again.';
-                submitBtn.disabled = false;
-                submitBtn.textContent = originalText;
-            };
-
-            xhr.send('action=newsletter&email=' + encodeURIComponent(email) + '&id_popup=' + popupId);
-        },
-
-        trackStat: function (popupId, statType) {
-            if (!config.ajaxUrl) return;
-
-            var xhr = new XMLHttpRequest();
-            xhr.open('POST', config.ajaxUrl, true);
-            xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-            xhr.send('action=track&id_popup=' + popupId + '&stat_type=' + statType);
+    function post(action, data, callback) {
+        if (!config.ajaxUrl) {
+            return;
         }
-    };
 
-    // Initialize when DOM is ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function () {
-            PopupManager.init();
+        var payload = 'action=' + encodeURIComponent(action);
+        Object.keys(data || {}).forEach(function (key) {
+            payload += '&' + encodeURIComponent(key) + '=' + encodeURIComponent(data[key] == null ? '' : data[key]);
         });
-    } else {
-        PopupManager.init();
+
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', config.ajaxUrl, true);
+        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+        xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        xhr.onload = function () {
+            if (callback) {
+                var response = {};
+                try {
+                    response = JSON.parse(xhr.responseText || '{}');
+                } catch (e) {
+                    response = { success: false };
+                }
+                callback(response);
+            }
+        };
+        xhr.onerror = function () {
+            if (callback) {
+                callback({ success: false, message: config.labels ? config.labels.connectionError : 'Connection error.' });
+            }
+        };
+        xhr.send(payload);
     }
 
+    function sendEvent(popupId, variantId, eventType, extra) {
+        post('track_event', {
+            id_popup: popupId,
+            id_variant: variantId || 0,
+            event_type: eventType,
+            device: config.device || 'desktop',
+            page_type: config.pageType || 'other',
+            url: config.currentUrl || window.location.href,
+            session_key: config.sessionKey || '',
+            extra: extra ? JSON.stringify(extra) : ''
+        });
+    }
+
+    function parseTargetValue(rule) {
+        try {
+            return JSON.parse(rule.target_value || '[]');
+        } catch (e) {
+            return rule.target_value || '';
+        }
+    }
+
+    function arrayContainsAny(source, required) {
+        source = source || [];
+        required = required || [];
+        for (var i = 0; i < required.length; i++) {
+            if (source.indexOf(parseInt(required[i], 10)) !== -1 || source.indexOf(required[i]) !== -1) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function rulePasses(rule) {
+        var value = parseTargetValue(rule);
+        var cart = config.cart || {};
+
+        switch (rule.target_type) {
+            case 'page_type':
+                return value.indexOf(config.pageType) !== -1;
+            case 'device':
+                return value.indexOf(config.device) !== -1;
+            case 'customer_group':
+                return arrayContainsAny(config.customerGroups || [], value);
+            case 'language':
+                return value.indexOf(config.languageIso) !== -1;
+            case 'currency':
+                return value.indexOf(config.currencyIso) !== -1;
+            case 'login_state':
+                return value === 'logged' ? !!config.isLogged : !config.isLogged;
+            case 'url':
+                return String(config.currentUrl || window.location.href).indexOf(value) !== -1;
+            case 'cart_total':
+                return parseFloat(cart.total || 0) >= parseFloat(value || 0);
+            case 'cart_product':
+                return arrayContainsAny(cart.productIds || [], value);
+            case 'cart_category':
+                return arrayContainsAny(cart.categoryIds || [], value);
+            default:
+                return true;
+        }
+    }
+
+    function checkTargeting(popup) {
+        var rules = popup.targeting || [];
+        for (var i = 0; i < rules.length; i++) {
+            if (!rulePasses(rules[i])) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    function selectVariant(popup) {
+        var variants = popup.variants || [];
+        if (!variants.length) {
+            return null;
+        }
+
+        var cookieName = 'smart_popup_variant_' + popup.id_popup;
+        var assigned = Cookie.get(cookieName);
+        for (var i = 0; i < variants.length; i++) {
+            if (String(variants[i].id_variant) === String(assigned)) {
+                return variants[i];
+            }
+        }
+
+        if (parseInt(popup.ab_test_enabled, 10) !== 1 || variants.length === 1) {
+            Cookie.set(cookieName, variants[0].id_variant, 30);
+            return variants[0];
+        }
+
+        var roll = Math.floor(Math.random() * 100) + 1;
+        var cursor = 0;
+        var selected = variants[0];
+        for (var j = 0; j < variants.length; j++) {
+            cursor += parseInt(variants[j].traffic_percentage, 10) || 0;
+            if (roll <= cursor) {
+                selected = variants[j];
+                break;
+            }
+        }
+
+        Cookie.set(cookieName, selected.id_variant, 30);
+        sendEvent(popup.id_popup, selected.id_variant, 'variant_assignment', { variant_key: selected.variant_key });
+
+        return selected;
+    }
+
+    function getFocusable(container) {
+        return Array.prototype.slice.call(container.querySelectorAll(
+            'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+        )).filter(function (element) {
+            return element.offsetParent !== null || element.getClientRects().length > 0;
+        });
+    }
+
+    function focusDialog(overlay, keepLastFocused) {
+        var dialog = overlay.querySelector('.smart-popup-container');
+        var focusable = getFocusable(dialog);
+        if (!keepLastFocused) {
+            lastFocusedElement = document.activeElement;
+        }
+
+        if (focusable.length) {
+            focusable[0].focus();
+        } else {
+            dialog.focus();
+        }
+    }
+
+    function trapFocus(event) {
+        if (!activeOverlay || event.key !== 'Tab') {
+            return;
+        }
+
+        var dialog = activeOverlay.querySelector('.smart-popup-container');
+        var focusable = getFocusable(dialog);
+        if (!focusable.length) {
+            event.preventDefault();
+            dialog.focus();
+            return;
+        }
+
+        var first = focusable[0];
+        var last = focusable[focusable.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+        }
+    }
+
+    function markVariant(overlay, variant) {
+        var variantId = variant ? String(variant.id_variant) : '0';
+        var blocks = overlay.querySelectorAll('.smart-popup-variant');
+        for (var i = 0; i < blocks.length; i++) {
+            var isSelected = blocks[i].getAttribute('data-variant-id') === variantId;
+            blocks[i].hidden = !isSelected;
+            if (isSelected) {
+                var title = blocks[i].querySelector('.smart-popup-title');
+                var dialog = overlay.querySelector('.smart-popup-container');
+                if (title && dialog) {
+                    dialog.setAttribute('aria-labelledby', title.id);
+                }
+            }
+        }
+        overlay.setAttribute('data-selected-variant', variantId);
+    }
+
+    function isSuppressed(popupId) {
+        return Cookie.get('smart_popup_suppressed_' + popupId) !== null;
+    }
+
+    function suppress(popupId, days) {
+        Cookie.set('smart_popup_suppressed_' + popupId, '1', days);
+    }
+
+    function showPopup(overlay, popup) {
+        if (!overlay || shownPopups.indexOf(parseInt(popup.id_popup, 10)) !== -1) {
+            return;
+        }
+
+        if (activeOverlay) {
+            var activeId = activeOverlay.getAttribute('data-popup-id');
+            var activePopup = null;
+            for (var i = 0; i < popups.length; i++) {
+                if (String(popups[i].id_popup) === String(activeId)) {
+                    activePopup = popups[i];
+                    break;
+                }
+            }
+            if (activePopup && parseInt(activePopup.priority, 10) >= parseInt(popup.priority, 10)) {
+                return;
+            }
+            closePopup(activeOverlay, false);
+        }
+
+        var variant = selectVariant(popup);
+        markVariant(overlay, variant);
+        shownPopups.push(parseInt(popup.id_popup, 10));
+        overlay.style.display = 'flex';
+        overlay.offsetHeight;
+        overlay.classList.add('active');
+        activeOverlay = overlay;
+        document.body.style.overflow = 'hidden';
+        focusDialog(overlay, false);
+        window.setTimeout(function () {
+            if (activeOverlay === overlay && !overlay.contains(document.activeElement)) {
+                focusDialog(overlay, true);
+            }
+        }, 80);
+        sendEvent(popup.id_popup, variant ? variant.id_variant : 0, 'impression');
+    }
+
+    function closePopup(overlay, trackClose) {
+        if (!overlay) {
+            return;
+        }
+
+        var popupId = overlay.getAttribute('data-popup-id');
+        var variantId = overlay.getAttribute('data-selected-variant') || 0;
+        var frequencyDays = parseInt(overlay.getAttribute('data-frequency-days'), 10);
+
+        if (trackClose !== false) {
+            sendEvent(popupId, variantId, 'close');
+            suppress(popupId, isNaN(frequencyDays) ? 7 : frequencyDays);
+        }
+
+        overlay.classList.remove('active');
+        setTimeout(function () {
+            overlay.style.display = 'none';
+        }, 240);
+
+        activeOverlay = null;
+        document.body.style.overflow = '';
+        if (lastFocusedElement && lastFocusedElement.focus) {
+            lastFocusedElement.focus();
+        }
+    }
+
+    function setupTrigger(popup) {
+        if (isSuppressed(popup.id_popup) || !checkTargeting(popup)) {
+            return;
+        }
+
+        if (config.device === 'mobile' && popup.mobile_behavior === 'hidden') {
+            return;
+        }
+
+        var overlay = document.querySelector('[data-popup-id="' + popup.id_popup + '"]');
+        if (!overlay) {
+            return;
+        }
+
+        switch (popup.trigger_type) {
+            case 'exit':
+                if (config.device === 'desktop') {
+                    var exitTriggered = false;
+                    document.addEventListener('mouseout', function (event) {
+                        if (!exitTriggered && event.clientY < 10 && event.relatedTarget === null) {
+                            exitTriggered = true;
+                            showPopup(overlay, popup);
+                        }
+                    });
+                }
+                break;
+            case 'scroll':
+                var scrollTriggered = false;
+                var scrollPercent = parseInt(popup.trigger_value, 10) || 50;
+                window.addEventListener('scroll', function () {
+                    if (scrollTriggered) {
+                        return;
+                    }
+                    var scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                    var docHeight = Math.max(document.documentElement.scrollHeight - window.innerHeight, 1);
+                    if ((scrollTop / docHeight) * 100 >= scrollPercent) {
+                        scrollTriggered = true;
+                        showPopup(overlay, popup);
+                    }
+                }, { passive: true });
+                break;
+            case 'inactivity':
+                var inactivityTriggered = false;
+                var inactivityTime = (parseInt(popup.trigger_value, 10) || 30) * 1000;
+                var timer;
+                var reset = function () {
+                    if (inactivityTriggered) {
+                        return;
+                    }
+                    clearTimeout(timer);
+                    timer = setTimeout(function () {
+                        inactivityTriggered = true;
+                        showPopup(overlay, popup);
+                    }, inactivityTime);
+                };
+                ['mousemove', 'keydown', 'scroll', 'touchstart'].forEach(function (name) {
+                    document.addEventListener(name, reset, { passive: true });
+                });
+                reset();
+                break;
+            case 'load':
+            default:
+                setTimeout(function () {
+                    showPopup(overlay, popup);
+                }, (parseInt(popup.trigger_value, 10) || 0) * 1000);
+                break;
+        }
+    }
+
+    function handleNewsletter(form) {
+        var popupId = form.getAttribute('data-popup-id');
+        var variantId = form.getAttribute('data-variant-id') || 0;
+        var email = form.querySelector('input[name="email"]').value;
+        var consent = form.querySelector('input[name="consent"]');
+        var button = form.querySelector('button[type="submit"]');
+        var message = form.parentNode.querySelector('.smart-popup-message');
+        var original = button.textContent;
+
+        button.disabled = true;
+        button.textContent = '...';
+
+        post('newsletter_subscribe', {
+            id_popup: popupId,
+            id_variant: variantId,
+            email: email,
+            consent: consent && consent.checked ? 1 : 0,
+            device: config.device || 'desktop',
+            page_type: config.pageType || 'other',
+            url: config.currentUrl || window.location.href,
+            session_key: config.sessionKey || ''
+        }, function (response) {
+            message.hidden = false;
+            message.className = 'smart-popup-message ' + (response.success ? 'success' : 'error');
+            message.textContent = response.message || '';
+            if (response.success) {
+                suppress(popupId, 365);
+                form.style.display = 'none';
+            } else {
+                button.disabled = false;
+                button.textContent = original;
+            }
+        });
+    }
+
+    function bindEvents() {
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && activeOverlay) {
+                closePopup(activeOverlay, true);
+            }
+            trapFocus(event);
+        });
+
+        document.addEventListener('click', function (event) {
+            if (event.target.classList && event.target.classList.contains('smart-popup-overlay')) {
+                if (event.target.getAttribute('data-close-overlay') === '1') {
+                    closePopup(event.target, true);
+                }
+            }
+
+            var close = event.target.closest ? event.target.closest('.smart-popup-close') : null;
+            if (close) {
+                closePopup(close.closest('.smart-popup-overlay'), true);
+            }
+
+            var cta = event.target.closest ? event.target.closest('.smart-popup-cta') : null;
+            if (cta) {
+                var ctaOverlay = cta.closest('.smart-popup-overlay');
+                var ctaFrequency = ctaOverlay ? parseInt(ctaOverlay.getAttribute('data-frequency-days'), 10) : 7;
+                sendEvent(cta.getAttribute('data-popup-id'), cta.getAttribute('data-variant-id'), 'cta_click');
+                suppress(cta.getAttribute('data-popup-id'), isNaN(ctaFrequency) ? 7 : ctaFrequency);
+            }
+
+            var coupon = event.target.closest ? event.target.closest('.smart-popup-copy-coupon') : null;
+            if (coupon) {
+                var overlay = coupon.closest('.smart-popup-overlay');
+                var popupId = overlay.getAttribute('data-popup-id');
+                var variantId = overlay.getAttribute('data-selected-variant') || 0;
+                var code = coupon.getAttribute('data-coupon');
+                var afterCopy = function (success) {
+                    coupon.textContent = success && config.labels ? config.labels.copied : (config.labels ? config.labels.copyFailed : 'Copy failed');
+                    post('coupon_copy', {
+                        id_popup: popupId,
+                        id_variant: variantId,
+                        coupon_code: code,
+                        device: config.device || 'desktop',
+                        page_type: config.pageType || 'other',
+                        url: config.currentUrl || window.location.href,
+                        session_key: config.sessionKey || ''
+                    });
+                    suppress(popupId, 365);
+                };
+
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(code).then(function () {
+                        afterCopy(true);
+                    }, function () {
+                        afterCopy(false);
+                    });
+                } else {
+                    var input = document.createElement('textarea');
+                    input.value = code;
+                    document.body.appendChild(input);
+                    input.select();
+                    afterCopy(document.execCommand('copy'));
+                    document.body.removeChild(input);
+                }
+            }
+        });
+
+        var forms = document.querySelectorAll('.smart-popup-newsletter-form');
+        for (var i = 0; i < forms.length; i++) {
+            forms[i].addEventListener('submit', function (event) {
+                event.preventDefault();
+                handleNewsletter(event.currentTarget);
+            });
+        }
+    }
+
+    function init() {
+        if (!popups.length) {
+            return;
+        }
+
+        bindEvents();
+        popups.forEach(setupTrigger);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
 })();

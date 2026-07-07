@@ -1,22 +1,19 @@
 /**
- * Smart Popup Front-End Styles
+ * Advanced Popup Studio front styles.
  */
 
-/* Overlay */
 .smart-popup-overlay {
     position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, var(--overlay-opacity, 0.5));
+    inset: 0;
     z-index: 9999;
     display: flex;
     align-items: center;
     justify-content: center;
+    padding: 20px;
+    background: rgba(15, 23, 42, var(--popup-overlay-opacity, 0.55));
     opacity: 0;
     visibility: hidden;
-    transition: opacity 0.3s ease, visibility 0.3s ease;
+    transition: opacity 0.24s ease, visibility 0.24s ease;
 }
 
 .smart-popup-overlay.active {
@@ -24,261 +21,300 @@
     visibility: visible;
 }
 
-/* Container */
 .smart-popup-container {
     position: relative;
-    max-width: 90vw;
-    max-height: 90vh;
-    overflow: auto;
-    background-size: cover;
-    background-position: center;
-    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+    width: min(var(--popup-width, 560px), calc(100vw - 40px));
+    max-height: min(86vh, 760px);
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: 1fr;
+    background: var(--popup-bg, #fff);
+    color: var(--popup-text, #1f2937);
+    border-radius: var(--popup-radius, 8px);
+    box-shadow: 0 24px 70px rgba(15, 23, 42, 0.28);
+    transform: translateY(12px) scale(0.98);
+    transition: transform 0.24s ease;
 }
 
-/* Close Button */
+.smart-popup-overlay.active .smart-popup-container {
+    transform: translateY(0) scale(1);
+}
+
+.smart-popup-container:focus {
+    outline: 3px solid color-mix(in srgb, var(--popup-accent, #25b9d7) 45%, transparent);
+    outline-offset: 3px;
+}
+
 .smart-popup-close {
     position: absolute;
-    top: 10px;
-    right: 10px;
-    width: 30px;
-    height: 30px;
-    border: none;
-    background: transparent;
-    font-size: 24px;
-    line-height: 1;
+    top: 12px;
+    right: 12px;
+    z-index: 3;
+    width: 36px;
+    height: 36px;
+    border: 0;
+    border-radius: 50%;
+    background: rgba(15, 23, 42, 0.08);
+    color: var(--popup-text, #1f2937);
     cursor: pointer;
-    z-index: 10;
-    opacity: 0.7;
-    transition: opacity 0.2s ease;
-    color: #333;
+    font-size: 22px;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.smart-popup-close:hover {
-    opacity: 1;
-}
-
-.smart-popup-close:focus {
+.smart-popup-close:hover,
+.smart-popup-close:focus-visible {
+    background: var(--popup-accent, #25b9d7);
+    color: #fff;
     outline: none;
 }
 
-.smart-popup-close.close-style-circle {
-    background: rgba(0, 0, 0, 0.5);
-    color: #fff;
-    border-radius: 50%;
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
 .smart-popup-close.close-style-square {
-    background: rgba(0, 0, 0, 0.5);
-    color: #fff;
     border-radius: 4px;
-    width: 36px;
-    height: 36px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
 }
 
 .smart-popup-close.close-style-text {
     width: auto;
-    font-size: 14px;
-    padding: 5px 10px;
-    background: rgba(0, 0, 0, 0.1);
+    min-width: 64px;
+    padding: 0 12px;
     border-radius: 4px;
+    font-size: 13px;
 }
 
-/* Content */
+.smart-popup-media {
+    min-height: 190px;
+    background-image: var(--popup-image);
+    background-size: cover;
+    background-position: center;
+}
+
+.smart-popup-layout-image_left,
+.smart-popup-layout-image_right {
+    grid-template-columns: minmax(190px, 0.85fr) 1fr;
+}
+
+.smart-popup-layout-image_right .smart-popup-media {
+    order: 2;
+}
+
+.smart-popup-layout-full_image {
+    min-height: 420px;
+    background-image: var(--popup-image);
+    background-size: cover;
+    background-position: center;
+}
+
+.smart-popup-layout-full_image .smart-popup-media {
+    display: none;
+}
+
+.smart-popup-layout-full_image .smart-popup-body {
+    align-self: end;
+    background: linear-gradient(180deg, rgba(255,255,255,0.92), rgba(255,255,255,0.98));
+}
+
+.smart-popup-body {
+    padding: 34px;
+    overflow: auto;
+}
+
+.smart-popup-variant[hidden] {
+    display: none !important;
+}
+
+.smart-popup-title {
+    margin: 0 36px 10px 0;
+    color: var(--popup-text, #1f2937);
+    font-size: 28px;
+    line-height: 1.15;
+    font-weight: 800;
+    letter-spacing: 0;
+}
+
+.smart-popup-subtitle {
+    margin: 0 0 14px;
+    color: color-mix(in srgb, var(--popup-text, #1f2937) 72%, #ffffff);
+    font-size: 15px;
+    line-height: 1.45;
+}
+
 .smart-popup-content {
-    padding: 30px;
+    margin-bottom: 18px;
+    line-height: 1.58;
 }
 
-.popup-title {
-    margin: 0 0 15px;
-    font-size: 24px;
-    font-weight: 600;
-    color: #333;
+.smart-popup-content p:last-child {
+    margin-bottom: 0;
 }
 
-.popup-description {
-    margin-bottom: 20px;
-    color: #666;
-    line-height: 1.6;
-}
-
-.popup-html-content {
-    margin-bottom: 20px;
-    line-height: 1.6;
-}
-
-.popup-html-content img {
+.smart-popup-content img {
     max-width: 100%;
     height: auto;
 }
 
-/* CTA Button */
-.popup-cta {
-    text-align: center;
-    margin-top: 20px;
-}
-
-.popup-cta-btn {
-    display: inline-block;
-    padding: 12px 30px;
-    font-size: 16px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    text-decoration: none;
+.smart-popup-cta,
+.smart-popup-newsletter-form button,
+.smart-popup-copy-coupon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 18px;
+    border: 0;
     border-radius: 4px;
-    transition: all 0.3s ease;
+    background: var(--popup-button, #111827);
+    color: var(--popup-button-text, #fff);
+    font-weight: 700;
+    text-decoration: none;
+    cursor: pointer;
 }
 
-.popup-cta-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+.smart-popup-cta:hover,
+.smart-popup-cta:focus-visible,
+.smart-popup-newsletter-form button:hover,
+.smart-popup-newsletter-form button:focus-visible,
+.smart-popup-copy-coupon:hover,
+.smart-popup-copy-coupon:focus-visible {
+    color: var(--popup-button-text, #fff);
+    filter: brightness(0.94);
+    outline: 3px solid color-mix(in srgb, var(--popup-accent, #25b9d7) 35%, transparent);
+    outline-offset: 2px;
+    text-decoration: none;
 }
 
-/* Newsletter Form */
-.smart-popup-newsletter {
-    text-align: center;
+.smart-popup-coupon {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 18px 0;
+}
+
+.smart-popup-coupon code {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 16px;
+    border: 1px dashed var(--popup-accent, #25b9d7);
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--popup-accent, #25b9d7) 8%, #ffffff);
+    color: var(--popup-text, #1f2937);
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 0;
 }
 
 .smart-popup-newsletter-form {
-    display: flex;
-    flex-direction: column;
+    display: grid;
     gap: 10px;
-    max-width: 300px;
-    margin: 0 auto;
+    margin-top: 18px;
 }
 
-.smart-popup-newsletter-form .form-control {
-    padding: 12px 15px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 14px;
+.smart-popup-newsletter-form input[type="email"] {
     width: 100%;
-    box-sizing: border-box;
-}
-
-.smart-popup-newsletter-form .form-control:focus {
-    outline: none;
-    border-color: #25b9d7;
-    box-shadow: 0 0 0 3px rgba(37, 185, 215, 0.1);
-}
-
-.smart-popup-newsletter-form .btn {
-    padding: 12px 20px;
-    border: none;
+    min-height: 44px;
+    padding: 0 13px;
+    border: 1px solid #cbd5e1;
     border-radius: 4px;
-    cursor: pointer;
-    font-weight: 600;
-    transition: all 0.3s ease;
+    color: #111827;
 }
 
-.smart-popup-newsletter-form .btn:hover {
-    transform: translateY(-2px);
+.smart-popup-newsletter-form input[type="email"]:focus-visible {
+    border-color: var(--popup-accent, #25b9d7);
+    outline: 3px solid color-mix(in srgb, var(--popup-accent, #25b9d7) 25%, transparent);
 }
 
-.smart-popup-newsletter-form .btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none;
+.smart-popup-consent {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    color: color-mix(in srgb, var(--popup-text, #1f2937) 76%, #ffffff);
+    font-size: 12px;
+    line-height: 1.4;
 }
 
-.newsletter-message {
-    margin-top: 15px;
-    padding: 10px 15px;
+.smart-popup-message {
+    margin-top: 12px;
+    padding: 10px 12px;
     border-radius: 4px;
-    font-size: 14px;
+    font-size: 13px;
 }
 
-.newsletter-message.success {
-    background: #d4edda;
-    color: #155724;
-    border: 1px solid #c3e6cb;
+.smart-popup-message.success {
+    background: #dcfce7;
+    color: #166534;
 }
 
-.newsletter-message.error {
-    background: #f8d7da;
-    color: #721c24;
-    border: 1px solid #f5c6cb;
+.smart-popup-message.error {
+    background: #fee2e2;
+    color: #991b1b;
 }
 
-/* Image Popup */
-.popup-image-link {
-    display: block;
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
 }
 
-.popup-image {
-    display: block;
-    max-width: 100%;
-    height: auto;
-}
-
-/* Responsive - Mobile */
 @media (max-width: 767px) {
+    .smart-popup-overlay {
+        align-items: flex-end;
+        padding: 12px;
+    }
+
     .smart-popup-container {
-        width: 95vw !important;
-        max-height: 80vh;
-        margin: 10px;
+        width: 100%;
+        max-height: 84vh;
+        border-radius: 12px 12px 0 0;
     }
 
-    .smart-popup-content {
-        padding: 20px;
+    .smart-popup-container.smart-popup-mobile-modal {
+        border-radius: var(--popup-radius, 8px);
+        max-height: 82vh;
     }
 
-    .popup-title {
-        font-size: 20px;
+    .smart-popup-container.smart-popup-mobile-hidden {
+        display: none;
+    }
+
+    .smart-popup-layout-image_left,
+    .smart-popup-layout-image_right {
+        grid-template-columns: 1fr;
+    }
+
+    .smart-popup-layout-image_right .smart-popup-media {
+        order: 0;
+    }
+
+    .smart-popup-media {
+        min-height: 150px;
+    }
+
+    .smart-popup-body {
+        padding: 26px 20px 22px;
+    }
+
+    .smart-popup-title {
+        font-size: 22px;
     }
 
     .smart-popup-close {
         width: 44px;
         height: 44px;
-        font-size: 28px;
-        top: 5px;
-        right: 5px;
-    }
-
-    /* Google SEO - Popup should not cover entire screen on mobile */
-    .smart-popup-overlay {
-        align-items: flex-end;
-        padding-bottom: 20px;
-    }
-
-    .smart-popup-newsletter-form {
-        max-width: 100%;
     }
 }
 
-/* Animation overrides for better UX */
-.smart-popup-container.animated {
-    animation-duration: 0.4s;
-}
-
-/* Loading state */
-.smart-popup-loading {
-    position: relative;
-}
-
-.smart-popup-loading::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 30px;
-    height: 30px;
-    margin: -15px 0 0 -15px;
-    border: 3px solid #f3f3f3;
-    border-top: 3px solid #25b9d7;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+@media (prefers-reduced-motion: reduce) {
+    .smart-popup-overlay,
+    .smart-popup-container {
+        transition: none;
+    }
 }

@@ -1,11 +1,11 @@
 {
     "name": "prestashop/ps_advanced_popup",
-    "description": "Advanced Smart Popup module for PrestaShop - Create targeted popups with smart triggers",
+    "description": "Advanced Popup Studio for PrestaShop - premium targeted popups with templates, A/B variants and analytics",
     "type": "prestashop-module",
     "license": "AFL-3.0",
     "authors": [
         {
-            "name": "Developer",
+            "name": "Advanced Popup Studio",
             "email": "developer@example.com"
         }
     ],

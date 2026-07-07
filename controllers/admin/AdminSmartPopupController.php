@@ -1,6 +1,6 @@
 <?php
 /**
- * Admin Controller for Smart Popup
+ * Custom admin controller for Advanced Popup Studio.
  */
 
 if (!defined('_PS_VERSION_')) {
@@ -15,656 +15,25 @@ class AdminSmartPopupController extends ModuleAdminController
     {
         $this->table = 'smart_popup';
         $this->className = 'SmartPopup';
-        $this->lang = true;
-        $this->bootstrap = true;
         $this->identifier = 'id_popup';
-        $this->_defaultOrderBy = 'priority';
-        $this->_defaultOrderWay = 'DESC';
+        $this->bootstrap = true;
+        $this->lang = true;
 
         parent::__construct();
-
-        $this->fields_list = [
-            'id_popup' => [
-                'title' => $this->l('ID'),
-                'align' => 'center',
-                'class' => 'fixed-width-xs',
-            ],
-            'title' => [
-                'title' => $this->l('Title'),
-                'filter_key' => 'pl!title',
-            ],
-            'popup_type' => [
-                'title' => $this->l('Type'),
-                'type' => 'select',
-                'list' => $this->getPopupTypes(),
-                'filter_key' => 'a!popup_type',
-                'callback' => 'getPopupTypeBadge',
-            ],
-            'trigger_type' => [
-                'title' => $this->l('Trigger'),
-                'type' => 'select',
-                'list' => $this->getTriggerTypes(),
-                'filter_key' => 'a!trigger_type',
-            ],
-            'active' => [
-                'title' => $this->l('Status'),
-                'active' => 'status',
-                'type' => 'bool',
-                'class' => 'fixed-width-xs',
-                'align' => 'center',
-            ],
-            'priority' => [
-                'title' => $this->l('Priority'),
-                'align' => 'center',
-                'class' => 'fixed-width-xs',
-            ],
-        ];
-
-        $this->bulk_actions = [
-            'delete' => [
-                'text' => $this->l('Delete selected'),
-                'confirm' => $this->l('Delete selected items?'),
-                'icon' => 'icon-trash',
-            ],
-            'enableSelection' => [
-                'text' => $this->l('Enable selection'),
-                'icon' => 'icon-power-off text-success',
-            ],
-            'disableSelection' => [
-                'text' => $this->l('Disable selection'),
-                'icon' => 'icon-power-off text-danger',
-            ],
-        ];
-
-        $this->_select = 'pl.title';
-        $this->_join = 'LEFT JOIN `' . _DB_PREFIX_ . 'smart_popup_lang` pl
-                        ON (a.id_popup = pl.id_popup AND pl.id_lang = ' . (int) $this->context->language->id . ')';
-    }
-
-    public function getPopupTypeBadge($value)
-    {
-        $badges = [
-            'image' => '<span class="badge badge-info">' . $this->l('Image') . '</span>',
-            'html' => '<span class="badge badge-success">' . $this->l('HTML') . '</span>',
-            'newsletter' => '<span class="badge badge-warning">' . $this->l('Newsletter') . '</span>',
-        ];
-        return isset($badges[$value]) ? $badges[$value] : $value;
-    }
-
-    private function getPopupTypes()
-    {
-        return [
-            'image' => $this->l('Image Only'),
-            'html' => $this->l('HTML Content'),
-            'newsletter' => $this->l('Newsletter Form'),
-        ];
-    }
-
-    private function getTriggerTypes()
-    {
-        return [
-            'load' => $this->l('On Page Load'),
-            'exit' => $this->l('Exit Intent'),
-            'scroll' => $this->l('Scroll Percentage'),
-            'inactivity' => $this->l('Inactivity'),
-        ];
-    }
-
-    private function getAnimationTypes()
-    {
-        return [
-            'fadeIn' => 'Fade In',
-            'fadeInDown' => 'Fade In Down',
-            'fadeInUp' => 'Fade In Up',
-            'bounceIn' => 'Bounce In',
-            'zoomIn' => 'Zoom In',
-            'slideInDown' => 'Slide In Down',
-            'slideInUp' => 'Slide In Up',
-        ];
-    }
-
-    private function getCloseButtonStyles()
-    {
-        return [
-            'default' => $this->l('Default (X)'),
-            'circle' => $this->l('Circle'),
-            'square' => $this->l('Square'),
-            'text' => $this->l('Text (Close)'),
-        ];
-    }
-
-    public function renderForm()
-    {
-        $animationOptions = [];
-        foreach ($this->getAnimationTypes() as $key => $value) {
-            $animationOptions[] = ['id' => $key, 'name' => $value];
-        }
-
-        $closeButtonOptions = [];
-        foreach ($this->getCloseButtonStyles() as $key => $value) {
-            $closeButtonOptions[] = ['id' => $key, 'name' => $value];
-        }
-
-        $this->fields_form = [
-            'legend' => [
-                'title' => $this->l('Popup Settings'),
-                'icon' => 'icon-cogs',
-            ],
-            'tabs' => [
-                'general' => $this->l('General'),
-                'design' => $this->l('Design & Content'),
-                'trigger' => $this->l('Triggers'),
-                'targeting' => $this->l('Targeting'),
-                'frequency' => $this->l('Frequency'),
-            ],
-            'input' => [
-                // === GENERAL TAB ===
-                [
-                    'type' => 'switch',
-                    'label' => $this->l('Active'),
-                    'name' => 'active',
-                    'is_bool' => true,
-                    'values' => [
-                        ['id' => 'active_on', 'value' => 1, 'label' => $this->l('Yes')],
-                        ['id' => 'active_off', 'value' => 0, 'label' => $this->l('No')],
-                    ],
-                    'tab' => 'general',
-                ],
-                [
-                    'type' => 'text',
-                    'label' => $this->l('Title'),
-                    'name' => 'title',
-                    'lang' => true,
-                    'required' => true,
-                    'hint' => $this->l('Internal title for identification'),
-                    'tab' => 'general',
-                ],
-                [
-                    'type' => 'select',
-                    'label' => $this->l('Popup Type'),
-                    'name' => 'popup_type',
-                    'options' => [
-                        'query' => [
-                            ['id' => 'image', 'name' => $this->l('Image Only')],
-                            ['id' => 'html', 'name' => $this->l('HTML Content')],
-                            ['id' => 'newsletter', 'name' => $this->l('Newsletter Form')],
-                        ],
-                        'id' => 'id',
-                        'name' => 'name',
-                    ],
-                    'tab' => 'general',
-                ],
-                [
-                    'type' => 'datetime',
-                    'label' => $this->l('Start Date'),
-                    'name' => 'date_start',
-                    'hint' => $this->l('Leave empty for immediate start'),
-                    'tab' => 'general',
-                ],
-                [
-                    'type' => 'datetime',
-                    'label' => $this->l('End Date'),
-                    'name' => 'date_end',
-                    'hint' => $this->l('Leave empty for no end date'),
-                    'tab' => 'general',
-                ],
-                [
-                    'type' => 'text',
-                    'label' => $this->l('Priority'),
-                    'name' => 'priority',
-                    'class' => 'fixed-width-sm',
-                    'hint' => $this->l('Higher number = higher priority'),
-                    'tab' => 'general',
-                ],
-
-                // === DESIGN TAB ===
-                [
-                    'type' => 'textarea',
-                    'label' => $this->l('Content'),
-                    'name' => 'content',
-                    'lang' => true,
-                    'autoload_rte' => true,
-                    'cols' => 100,
-                    'rows' => 15,
-                    'desc' => $this->l('Popup içinde gösterilecek HTML içerik. Metin, resim, video veya özel HTML kodları ekleyebilirsiniz. Newsletter tipi için bu alan form üstünde açıklama metni olarak kullanılır.'),
-                    'tab' => 'design',
-                ],
-                [
-                    'type' => 'text',
-                    'label' => $this->l('CTA Button Text'),
-                    'name' => 'cta_text',
-                    'lang' => true,
-                    'desc' => $this->l('Aksiyon butonu metni. Örnek: "Hemen Al", "Detayları Gör", "Fırsatı Kaçırma". Newsletter tipinde "Abone Ol" butonu için kullanılır.'),
-                    'placeholder' => $this->l('Örn: Hemen İncele'),
-                    'tab' => 'design',
-                ],
-                [
-                    'type' => 'text',
-                    'label' => $this->l('CTA Button URL'),
-                    'name' => 'cta_url',
-                    'lang' => true,
-                    'desc' => $this->l('Butona tıklandığında yönlendirilecek sayfa adresi. Tam URL girin (https:// ile başlamalı). Newsletter tipinde kullanılmaz.'),
-                    'placeholder' => 'https://example.com/kampanya',
-                    'tab' => 'design',
-                ],
-                [
-                    'type' => 'text',
-                    'label' => $this->l('Width (px)'),
-                    'name' => 'width',
-                    'class' => 'fixed-width-sm',
-                    'suffix' => 'px',
-                    'desc' => $this->l('Popup genişliği piksel cinsinden. Mobilde otomatik olarak ekrana sığacak şekilde küçülür. Önerilen: 400-700px arası.'),
-                    'tab' => 'design',
-                ],
-                [
-                    'type' => 'color',
-                    'label' => $this->l('Background Color'),
-                    'name' => 'bg_color',
-                    'desc' => $this->l('Popup arka plan rengi. Arkaplan resmi kullanılıyorsa bu renk resmin altında görünür.'),
-                    'tab' => 'design',
-                ],
-                [
-                    'type' => 'file',
-                    'label' => $this->l('Background Image'),
-                    'name' => 'bg_image',
-                    'display_image' => true,
-                    'desc' => $this->l('Opsiyonel arka plan görseli. Image tipi popup için ana görsel olarak kullanılır. Önerilen boyut: 600x400px, max 500KB.'),
-                    'tab' => 'design',
-                ],
-                [
-                    'type' => 'text',
-                    'label' => $this->l('Border Radius (px)'),
-                    'name' => 'border_radius',
-                    'class' => 'fixed-width-sm',
-                    'suffix' => 'px',
-                    'desc' => $this->l('Köşe yuvarlaklığı. 0 = keskin köşeler, 8-16 = modern görünüm, 50+ = oval kenarlar.'),
-                    'tab' => 'design',
-                ],
-                [
-                    'type' => 'text',
-                    'label' => $this->l('Overlay Opacity'),
-                    'name' => 'overlay_opacity',
-                    'class' => 'fixed-width-sm',
-                    'desc' => $this->l('Arka plan karartma oranı. 0 = şeffaf (karartma yok), 0.5 = yarı karartma, 1 = tam siyah. Önerilen: 0.5'),
-                    'tab' => 'design',
-                ],
-                [
-                    'type' => 'select',
-                    'label' => $this->l('Animation'),
-                    'name' => 'animation',
-                    'options' => [
-                        'query' => $animationOptions,
-                        'id' => 'id',
-                        'name' => 'name',
-                    ],
-                    'desc' => $this->l('Popup açılış animasyonu. Fade In = yumuşak belirme, Bounce = zıplama efekti, Zoom = büyüyerek açılma.'),
-                    'tab' => 'design',
-                ],
-                [
-                    'type' => 'select',
-                    'label' => $this->l('Close Button Style'),
-                    'name' => 'close_button_style',
-                    'options' => [
-                        'query' => $closeButtonOptions,
-                        'id' => 'id',
-                        'name' => 'name',
-                    ],
-                    'desc' => $this->l('Kapatma butonu görünümü. Default = basit X, Circle = yuvarlak arka planlı, Text = "Kapat" yazısı.'),
-                    'tab' => 'design',
-                ],
-                [
-                    'type' => 'switch',
-                    'label' => $this->l('Hide on Mobile'),
-                    'name' => 'hide_on_mobile',
-                    'is_bool' => true,
-                    'values' => [
-                        ['id' => 'mobile_on', 'value' => 1, 'label' => $this->l('Yes')],
-                        ['id' => 'mobile_off', 'value' => 0, 'label' => $this->l('No')],
-                    ],
-                    'desc' => $this->l('Evet seçilirse popup mobil cihazlarda gösterilmez. Google SEO kurallarına uyum için önerilir.'),
-                    'tab' => 'design',
-                ],
-
-                // === TRIGGER TAB ===
-                [
-                    'type' => 'select',
-                    'label' => $this->l('Trigger Type'),
-                    'name' => 'trigger_type',
-                    'options' => [
-                        'query' => [
-                            ['id' => 'load', 'name' => $this->l('On Page Load')],
-                            ['id' => 'exit', 'name' => $this->l('Exit Intent (Desktop)')],
-                            ['id' => 'scroll', 'name' => $this->l('Scroll Percentage')],
-                            ['id' => 'inactivity', 'name' => $this->l('User Inactivity')],
-                        ],
-                        'id' => 'id',
-                        'name' => 'name',
-                    ],
-                    'desc' => $this->l('Popup\'un ne zaman gösterileceğini belirler. Page Load = sayfa yüklendikten X saniye sonra, Exit Intent = kullanıcı sayfadan çıkmaya çalışınca (sadece masaüstü), Scroll = sayfa X% kaydırılınca, Inactivity = X saniye hareketsizlik sonrası.'),
-                    'tab' => 'trigger',
-                ],
-                [
-                    'type' => 'text',
-                    'label' => $this->l('Trigger Value'),
-                    'name' => 'trigger_value',
-                    'class' => 'fixed-width-sm',
-                    'desc' => $this->l('Tetikleyici değeri: Page Load/Inactivity için saniye (örn: 5 = 5 saniye), Scroll için yüzde (örn: 50 = sayfanın %50\'si). Exit Intent için bu değer kullanılmaz.'),
-                    'tab' => 'trigger',
-                ],
-
-                // === TARGETING TAB ===
-                [
-                    'type' => 'select',
-                    'label' => $this->l('Target Pages'),
-                    'name' => 'target_pages[]',
-                    'multiple' => true,
-                    'class' => 'chosen',
-                    'options' => [
-                        'query' => [
-                            ['id' => 'all', 'name' => $this->l('All Pages')],
-                            ['id' => 'home', 'name' => $this->l('Homepage')],
-                            ['id' => 'category', 'name' => $this->l('Category Pages')],
-                            ['id' => 'product', 'name' => $this->l('Product Pages')],
-                            ['id' => 'cart', 'name' => $this->l('Cart')],
-                            ['id' => 'checkout', 'name' => $this->l('Checkout')],
-                        ],
-                        'id' => 'id',
-                        'name' => 'name',
-                    ],
-                    'desc' => $this->l('Popup\'un hangi sayfalarda gösterileceğini seçin. Boş bırakılırsa veya "All Pages" seçilirse tüm sayfalarda gösterilir. Birden fazla sayfa seçebilirsiniz.'),
-                    'tab' => 'targeting',
-                ],
-                [
-                    'type' => 'select',
-                    'label' => $this->l('Target Customer Groups'),
-                    'name' => 'target_groups[]',
-                    'multiple' => true,
-                    'class' => 'chosen',
-                    'options' => [
-                        'query' => Group::getGroups($this->context->language->id),
-                        'id' => 'id_group',
-                        'name' => 'name',
-                    ],
-                    'desc' => $this->l('Popup\'u sadece belirli müşteri gruplarına göstermek için seçin. Boş bırakılırsa tüm ziyaretçilere gösterilir. Örnek: Sadece VIP müşterilere özel kampanya.'),
-                    'tab' => 'targeting',
-                ],
-                [
-                    'type' => 'select',
-                    'label' => $this->l('Target Devices'),
-                    'name' => 'target_devices[]',
-                    'multiple' => true,
-                    'class' => 'chosen',
-                    'options' => [
-                        'query' => [
-                            ['id' => 'desktop', 'name' => $this->l('Desktop')],
-                            ['id' => 'tablet', 'name' => $this->l('Tablet')],
-                            ['id' => 'mobile', 'name' => $this->l('Mobile')],
-                        ],
-                        'id' => 'id',
-                        'name' => 'name',
-                    ],
-                    'desc' => $this->l('Popup\'un hangi cihazlarda gösterileceğini seçin. Boş bırakılırsa tüm cihazlarda gösterilir. Mobil için ayrı bir popup oluşturmanız önerilir.'),
-                    'tab' => 'targeting',
-                ],
-
-                // === FREQUENCY TAB ===
-                [
-                    'type' => 'text',
-                    'label' => $this->l('Show Again After (days)'),
-                    'name' => 'frequency_days',
-                    'class' => 'fixed-width-sm',
-                    'suffix' => $this->l('days'),
-                    'desc' => $this->l('Kullanıcı popup\'u kapattıktan kaç gün sonra tekrar gösterileceği. 0 = her ziyarette göster, 1 = günde bir kez, 7 = haftada bir, 30 = ayda bir. Önerilen: 1-7 gün.'),
-                    'tab' => 'frequency',
-                ],
-            ],
-            'submit' => [
-                'title' => $this->l('Save'),
-            ],
-        ];
-
-        // Load existing targeting rules for edit
-        if ($this->object && $this->object->id) {
-            $this->loadTargetingValues();
-        }
-
-        return parent::renderForm();
-    }
-
-    /**
-     * Set default values for new popup
-     */
-    public function getFieldsValue($obj)
-    {
-        $fields = parent::getFieldsValue($obj);
-
-        // Set defaults for new popup
-        if (!$obj->id) {
-            $fields['active'] = 0;
-            $fields['popup_type'] = 'html';
-            $fields['trigger_type'] = 'load';
-            $fields['trigger_value'] = 3;
-            $fields['frequency_days'] = 1;
-            $fields['width'] = 600;
-            $fields['bg_color'] = '#ffffff';
-            $fields['border_radius'] = 8;
-            $fields['overlay_opacity'] = 0.5;
-            $fields['animation'] = 'fadeIn';
-            $fields['close_button_style'] = 'default';
-            $fields['hide_on_mobile'] = 0;
-            $fields['priority'] = 0;
-        }
-
-        return $fields;
-    }
-
-    /**
-     * Load targeting values for form
-     */
-    private function loadTargetingValues()
-    {
-        $rules = $this->object->getTargetingRules();
-
-        foreach ($rules as $rule) {
-            $ids = json_decode($rule['target_ids'], true);
-            switch ($rule['target_type']) {
-                case 'page':
-                    $_POST['target_pages'] = $ids;
-                    break;
-                case 'customer_group':
-                    $_POST['target_groups'] = $ids;
-                    break;
-                case 'device':
-                    $_POST['target_devices'] = $ids;
-                    break;
-            }
-        }
-    }
-
-    public function postProcess()
-    {
-        if (Tools::isSubmit('submitAdd' . $this->table)) {
-            // Handle image upload
-            if (isset($_FILES['bg_image']) && $_FILES['bg_image']['size'] > 0) {
-                $this->processImageUpload();
-            }
-        }
-
-        $result = parent::postProcess();
-
-        // Save targeting rules after popup is saved
-        if (Tools::isSubmit('submitAdd' . $this->table) && $this->object && $this->object->id) {
-            $this->processTargetingRules();
-        }
-
-        return $result;
-    }
-
-    /**
-     * Process image upload
-     */
-    protected function processImageUpload()
-    {
-        $uploadDir = _PS_MODULE_DIR_ . 'ps_advanced_popup/views/img/';
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0755, true);
-        }
-
-        $fileName = 'popup_' . time() . '_' . $_FILES['bg_image']['name'];
-        $filePath = $uploadDir . $fileName;
-
-        if (move_uploaded_file($_FILES['bg_image']['tmp_name'], $filePath)) {
-            $_POST['bg_image'] = 'modules/ps_advanced_popup/views/img/' . $fileName;
-        }
-    }
-
-    /**
-     * Process targeting rules
-     */
-    protected function processTargetingRules()
-    {
-        $rules = [];
-
-        // Pages
-        $pages = Tools::getValue('target_pages');
-        if ($pages && is_array($pages) && !in_array('all', $pages)) {
-            $rules[] = [
-                'target_type' => 'page',
-                'target_ids' => json_encode($pages),
-            ];
-        }
-
-        // Customer Groups
-        $groups = Tools::getValue('target_groups');
-        if ($groups && is_array($groups)) {
-            $rules[] = [
-                'target_type' => 'customer_group',
-                'target_ids' => json_encode(array_map('intval', $groups)),
-            ];
-        }
-
-        // Devices
-        $devices = Tools::getValue('target_devices');
-        if ($devices && is_array($devices)) {
-            $rules[] = [
-                'target_type' => 'device',
-                'target_ids' => json_encode($devices),
-            ];
-        }
-
-        $this->object->saveTargetingRules($rules);
-    }
-
-    /**
-     * Render stats view
-     */
-    public function renderStats()
-    {
-        $idPopup = (int) Tools::getValue('id_popup');
-
-        if (!$idPopup) {
-            Tools::redirectAdmin($this->context->link->getAdminLink('AdminSmartPopup'));
-        }
-
-        $popup = new SmartPopup($idPopup, $this->context->language->id);
-
-        $stats = [
-            'today' => $this->getStatsForPeriod($idPopup, 1),
-            'week' => $this->getStatsForPeriod($idPopup, 7),
-            'month' => $this->getStatsForPeriod($idPopup, 30),
-            'all_time' => $this->getStatsForPeriod($idPopup, 365),
-        ];
-
-        $chartData = $this->getChartData($idPopup, 30);
-
-        $this->context->smarty->assign([
-            'popup' => $popup,
-            'stats' => $stats,
-            'chartData' => json_encode($chartData),
-            'conversionRate' => $stats['all_time']['impressions'] > 0
-                ? round(($stats['all_time']['conversions'] / $stats['all_time']['impressions']) * 100, 2)
-                : 0,
-            'back_url' => $this->context->link->getAdminLink('AdminSmartPopup'),
-        ]);
-
-        return $this->context->smarty->fetch(
-            _PS_MODULE_DIR_ . 'ps_advanced_popup/views/templates/admin/stats.tpl'
-        );
-    }
-
-    private function getStatsForPeriod($idPopup, $days)
-    {
-        $dateFrom = date('Y-m-d', strtotime("-{$days} days"));
-
-        $sql = new DbQuery();
-        $sql->select('stat_type, SUM(count) as total');
-        $sql->from('smart_popup_stats');
-        $sql->where('id_popup = ' . (int) $idPopup);
-        $sql->where('stat_date >= "' . pSQL($dateFrom) . '"');
-        $sql->groupBy('stat_type');
-
-        $results = Db::getInstance()->executeS($sql);
-
-        $stats = ['impressions' => 0, 'conversions' => 0];
-        foreach ($results as $row) {
-            if ($row['stat_type'] === 'impression') {
-                $stats['impressions'] = (int) $row['total'];
-            } else {
-                $stats['conversions'] = (int) $row['total'];
-            }
-        }
-
-        return $stats;
-    }
-
-    private function getChartData($idPopup, $days)
-    {
-        $dateFrom = date('Y-m-d', strtotime("-{$days} days"));
-
-        $sql = new DbQuery();
-        $sql->select('stat_date, stat_type, count');
-        $sql->from('smart_popup_stats');
-        $sql->where('id_popup = ' . (int) $idPopup);
-        $sql->where('stat_date >= "' . pSQL($dateFrom) . '"');
-        $sql->orderBy('stat_date ASC');
-
-        $results = Db::getInstance()->executeS($sql);
-
-        $data = [
-            'labels' => [],
-            'impressions' => [],
-            'conversions' => [],
-        ];
-
-        for ($i = $days; $i >= 0; $i--) {
-            $date = date('Y-m-d', strtotime("-{$i} days"));
-            $data['labels'][] = date('d M', strtotime($date));
-            $data['impressions'][$date] = 0;
-            $data['conversions'][$date] = 0;
-        }
-
-        foreach ($results as $row) {
-            $date = $row['stat_date'];
-            if ($row['stat_type'] === 'impression') {
-                $data['impressions'][$date] = (int) $row['count'];
-            } else {
-                $data['conversions'][$date] = (int) $row['count'];
-            }
-        }
-
-        $data['impressions'] = array_values($data['impressions']);
-        $data['conversions'] = array_values($data['conversions']);
-
-        return $data;
     }
 
     public function initContent()
     {
-        // Check if stats view requested
-        if (Tools::getValue('action') === 'stats') {
+        $this->processSmartPost();
+        $this->processSmartAction();
+
+        $view = Tools::getValue('aps_view', Tools::getValue('action'));
+        if ($view === 'stats') {
             $this->content = $this->renderStats();
-            parent::initContent();
-            return;
+        } elseif ($view === 'add' || $view === 'edit') {
+            $this->content = $this->renderEditor();
+        } else {
+            $this->content = $this->renderDashboard();
         }
 
         parent::initContent();
@@ -674,25 +43,783 @@ class AdminSmartPopupController extends ModuleAdminController
     {
         parent::setMedia($isNewTheme);
 
-        $this->addJS(_PS_MODULE_DIR_ . 'ps_advanced_popup/views/js/back.js');
-        $this->addCSS(_PS_MODULE_DIR_ . 'ps_advanced_popup/views/css/back.css');
+        $this->addCSS(_MODULE_DIR_ . 'ps_advanced_popup/views/css/back.css');
+        $this->addJS(_MODULE_DIR_ . 'ps_advanced_popup/views/js/vendor/chart-lite.js');
+        $this->addJS(_MODULE_DIR_ . 'ps_advanced_popup/views/js/back.js');
     }
 
-    /**
-     * Add stats link to row actions
-     */
-    public function renderList()
+    private function processSmartPost()
     {
-        $this->addRowAction('edit');
-        $this->addRowAction('stats');
-        $this->addRowAction('delete');
+        if (!Tools::isSubmit('submitSmartPopup')) {
+            return;
+        }
 
-        return parent::renderList();
+        if (!SmartPopup::isSchemaReady()) {
+            $this->errors[] = $this->l('The database schema is not ready for version 2.0. Please uninstall and reinstall the module for a fresh install.');
+            return;
+        }
+
+        if (!$this->isSmartTokenValid()) {
+            $this->errors[] = $this->l('Invalid security token.');
+            return;
+        }
+
+        $idPopup = (int) Tools::getValue('id_popup');
+        $existing = $idPopup ? $this->getPopupRow($idPopup) : [];
+        $imagePath = $this->processImageUpload(isset($existing['bg_image']) ? $existing['bg_image'] : '');
+        $popupData = $this->collectPopupData($imagePath);
+
+        if ($popupData['internal_name'] === '') {
+            $this->errors[] = $this->l('Internal name is required.');
+        }
+
+        if (!empty($this->errors)) {
+            return;
+        }
+
+        if ($idPopup) {
+            $popupData['date_upd'] = date('Y-m-d H:i:s');
+            Db::getInstance()->update('smart_popup', $popupData, 'id_popup = ' . (int) $idPopup, 0, true);
+        } else {
+            $popupData['date_add'] = date('Y-m-d H:i:s');
+            $popupData['date_upd'] = date('Y-m-d H:i:s');
+            Db::getInstance()->insert('smart_popup', $popupData, true);
+            $idPopup = (int) Db::getInstance()->Insert_ID();
+        }
+
+        $this->saveLangValues($idPopup);
+        $this->saveTargetingValues($idPopup);
+        $this->saveVariantValues($idPopup);
+
+        Ps_advanced_popup::clearCache();
+
+        $redirect = $this->context->link->getAdminLink('AdminSmartPopup');
+        if (Tools::isSubmit('saveAndStay')) {
+            $redirect .= '&aps_view=edit&id_popup=' . (int) $idPopup . '&conf=4';
+        } else {
+            $redirect .= '&conf=4';
+        }
+
+        Tools::redirectAdmin($redirect);
     }
 
-    public function displayStatsLink($token, $id)
+    private function processSmartAction()
     {
-        $link = $this->context->link->getAdminLink('AdminSmartPopup') . '&action=stats&id_popup=' . $id;
-        return '<a href="' . $link . '" title="' . $this->l('View Stats') . '"><i class="icon-bar-chart"></i></a>';
+        $smartAction = Tools::getValue('smart_action');
+        if (!$smartAction) {
+            return;
+        }
+
+        if (!$this->isSmartTokenValid()) {
+            $this->errors[] = $this->l('Invalid security token.');
+            return;
+        }
+
+        $idPopup = (int) Tools::getValue('id_popup');
+        if (!$idPopup) {
+            return;
+        }
+
+        if ($smartAction === 'toggle') {
+            $active = (int) Tools::getValue('active');
+            Db::getInstance()->update('smart_popup', [
+                'active' => $active ? 1 : 0,
+                'date_upd' => date('Y-m-d H:i:s'),
+            ], 'id_popup = ' . (int) $idPopup);
+            Ps_advanced_popup::clearCache();
+            Tools::redirectAdmin($this->context->link->getAdminLink('AdminSmartPopup') . '&conf=4');
+        }
+
+        if ($smartAction === 'delete') {
+            $popup = new SmartPopup($idPopup);
+            if (Validate::isLoadedObject($popup)) {
+                $popup->delete();
+            }
+            Tools::redirectAdmin($this->context->link->getAdminLink('AdminSmartPopup') . '&conf=1');
+        }
+
+        if ($smartAction === 'duplicate') {
+            $newId = $this->duplicatePopup($idPopup);
+            $url = $this->context->link->getAdminLink('AdminSmartPopup');
+            if ($newId) {
+                $url .= '&aps_view=edit&id_popup=' . (int) $newId . '&conf=19';
+            }
+            Tools::redirectAdmin($url);
+        }
+    }
+
+    private function isSmartTokenValid()
+    {
+        $token = (string) Tools::getValue('token');
+
+        return $token !== '' && hash_equals((string) $this->token, $token);
+    }
+
+    private function renderDashboard()
+    {
+        $rows = SmartPopup::getDashboardRows((int) $this->context->language->id, 30);
+        foreach ($rows as &$row) {
+            $idPopup = (int) $row['id_popup'];
+            $row['edit_url'] = $this->context->link->getAdminLink('AdminSmartPopup') . '&aps_view=edit&id_popup=' . $idPopup;
+            $row['stats_url'] = $this->context->link->getAdminLink('AdminSmartPopup') . '&aps_view=stats&id_popup=' . $idPopup;
+            $row['duplicate_url'] = $this->context->link->getAdminLink('AdminSmartPopup') . '&smart_action=duplicate&id_popup=' . $idPopup;
+            $row['toggle_url'] = $this->context->link->getAdminLink('AdminSmartPopup') . '&smart_action=toggle&id_popup=' . $idPopup . '&active=' . ((int) $row['active'] ? 0 : 1);
+            $row['delete_url'] = $this->context->link->getAdminLink('AdminSmartPopup') . '&smart_action=delete&id_popup=' . $idPopup;
+            $row['preview_url'] = $row['edit_url'] . '#popup-preview';
+        }
+
+        $this->context->smarty->assign([
+            'dashboard_title' => $this->l('Advanced Popup Studio'),
+            'popups' => $rows,
+            'totals' => SmartPopup::getGlobalStats(30),
+            'templates' => $this->getPresetTemplates(),
+            'add_url' => $this->context->link->getAdminLink('AdminSmartPopup') . '&aps_view=add',
+            'token' => $this->token,
+            'schema_ready' => SmartPopup::isSchemaReady(),
+        ]);
+
+        return $this->context->smarty->fetch(
+            _PS_MODULE_DIR_ . 'ps_advanced_popup/views/templates/admin/dashboard.tpl'
+        );
+    }
+
+    private function renderEditor()
+    {
+        $idPopup = (int) Tools::getValue('id_popup');
+        if (!SmartPopup::isSchemaReady()) {
+            Tools::redirectAdmin($this->context->link->getAdminLink('AdminSmartPopup'));
+        }
+
+        $templateKey = Tools::getValue('template_key', 'newsletter_discount');
+        $popup = $idPopup ? $this->getPopupRow($idPopup) : $this->getDefaultPopup($templateKey);
+
+        if (!$popup) {
+            Tools::redirectAdmin($this->context->link->getAdminLink('AdminSmartPopup'));
+        }
+
+        $this->context->smarty->assign([
+            'editor_title' => $idPopup ? $this->l('Edit popup') : $this->l('Create popup'),
+            'popup' => $popup,
+            'lang_values' => $idPopup ? $this->getLangValues($idPopup) : $this->getDefaultLangValues($templateKey),
+            'targeting' => $idPopup ? $this->getTargetingValues($idPopup) : $this->getDefaultTargetingValues($templateKey),
+            'variants' => $idPopup ? $this->getVariantValues($idPopup) : $this->getDefaultVariants($templateKey),
+            'templates' => $this->getPresetTemplates(),
+            'languages' => Language::getLanguages(true),
+            'default_language_id' => (int) Configuration::get('PS_LANG_DEFAULT'),
+            'groups' => Group::getGroups((int) $this->context->language->id),
+            'currencies' => Currency::getCurrencies(false, true),
+            'page_type_options' => ['home', 'category', 'product', 'cart', 'checkout', 'search', 'cms', 'other'],
+            'device_options' => ['desktop', 'tablet', 'mobile'],
+            'layout_options' => ['centered', 'image_top', 'image_left', 'image_right', 'full_image', 'compact_coupon', 'newsletter'],
+            'trigger_options' => ['load', 'exit', 'scroll', 'inactivity'],
+            'mobile_options' => ['bottom_sheet', 'modal', 'hidden'],
+            'form_action' => $this->context->link->getAdminLink('AdminSmartPopup'),
+            'back_url' => $this->context->link->getAdminLink('AdminSmartPopup'),
+            'token' => $this->token,
+        ]);
+
+        return $this->context->smarty->fetch(
+            _PS_MODULE_DIR_ . 'ps_advanced_popup/views/templates/admin/editor.tpl'
+        );
+    }
+
+    public function renderStats()
+    {
+        $idPopup = (int) Tools::getValue('id_popup');
+        if (!$idPopup) {
+            Tools::redirectAdmin($this->context->link->getAdminLink('AdminSmartPopup'));
+        }
+
+        $popup = $this->getPopupRow($idPopup);
+        $stats = SmartPopup::getStatsForPopup($idPopup, 30);
+
+        $this->context->smarty->assign([
+            'popup' => $popup,
+            'stats' => $stats,
+            'chartData' => json_encode($stats['trend']),
+            'back_url' => $this->context->link->getAdminLink('AdminSmartPopup'),
+        ]);
+
+        return $this->context->smarty->fetch(
+            _PS_MODULE_DIR_ . 'ps_advanced_popup/views/templates/admin/stats.tpl'
+        );
+    }
+
+    private function collectPopupData($imagePath)
+    {
+        $templateKey = $this->sanitizeChoice(Tools::getValue('template_key'), array_keys($this->getPresetTemplates()), 'announcement');
+
+        return [
+            'active' => (int) Tools::getValue('active'),
+            'internal_name' => pSQL(trim(Tools::getValue('internal_name'))),
+            'popup_type' => $this->sanitizeChoice(Tools::getValue('popup_type'), ['newsletter', 'coupon', 'cta', 'image', 'announcement'], 'cta'),
+            'campaign_goal' => $this->sanitizeChoice(Tools::getValue('campaign_goal'), ['newsletter', 'coupon', 'cart_recovery', 'free_shipping', 'upsell', 'image_campaign', 'announcement'], 'announcement'),
+            'template_key' => pSQL($templateKey),
+            'layout' => $this->sanitizeChoice(Tools::getValue('layout'), ['centered', 'image_top', 'image_left', 'image_right', 'full_image', 'compact_coupon', 'newsletter'], 'centered'),
+            'image_position' => $this->sanitizeChoice(Tools::getValue('image_position'), ['top', 'left', 'right', 'cover'], 'top'),
+            'trigger_type' => $this->sanitizeChoice(Tools::getValue('trigger_type'), ['load', 'exit', 'scroll', 'inactivity'], 'load'),
+            'trigger_value' => max(0, (int) Tools::getValue('trigger_value')),
+            'frequency_days' => max(0, (int) Tools::getValue('frequency_days')),
+            'width' => max(320, min(920, (int) Tools::getValue('width'))),
+            'bg_color' => $this->sanitizeColor(Tools::getValue('bg_color'), '#ffffff'),
+            'text_color' => $this->sanitizeColor(Tools::getValue('text_color'), '#1f2937'),
+            'accent_color' => $this->sanitizeColor(Tools::getValue('accent_color'), '#25b9d7'),
+            'button_color' => $this->sanitizeColor(Tools::getValue('button_color'), '#111827'),
+            'button_text_color' => $this->sanitizeColor(Tools::getValue('button_text_color'), '#ffffff'),
+            'bg_image' => pSQL($imagePath),
+            'border_radius' => max(0, min(32, (int) Tools::getValue('border_radius'))),
+            'overlay_opacity' => max(0, min(0.85, (float) Tools::getValue('overlay_opacity'))),
+            'animation' => $this->sanitizeChoice(Tools::getValue('animation'), ['fadeIn', 'fadeInUp', 'zoomIn'], 'fadeIn'),
+            'close_button_style' => $this->sanitizeChoice(Tools::getValue('close_button_style'), ['default', 'circle', 'square', 'text'], 'circle'),
+            'close_on_overlay' => (int) Tools::getValue('close_on_overlay'),
+            'mobile_behavior' => $this->sanitizeChoice(Tools::getValue('mobile_behavior'), ['bottom_sheet', 'modal', 'hidden'], 'bottom_sheet'),
+            'priority' => max(0, (int) Tools::getValue('priority')),
+            'ab_test_enabled' => (int) Tools::getValue('ab_test_enabled'),
+            'winner_metric' => $this->sanitizeChoice(Tools::getValue('winner_metric'), ['conversion_rate', 'cta_click', 'newsletter_success', 'coupon_copy'], 'conversion_rate'),
+            'date_start' => $this->normalizeDateTime(Tools::getValue('date_start')),
+            'date_end' => $this->normalizeDateTime(Tools::getValue('date_end')),
+        ];
+    }
+
+    private function saveLangValues($idPopup)
+    {
+        Db::getInstance()->delete('smart_popup_lang', 'id_popup = ' . (int) $idPopup);
+
+        foreach (Language::getLanguages(false) as $lang) {
+            $idLang = (int) $lang['id_lang'];
+            Db::getInstance()->insert('smart_popup_lang', [
+                'id_popup' => (int) $idPopup,
+                'id_lang' => $idLang,
+                'title' => pSQL(Tools::getValue('title_' . $idLang)),
+                'subtitle' => pSQL(Tools::getValue('subtitle_' . $idLang)),
+                'content' => pSQL(Tools::getValue('content_' . $idLang), true),
+                'cta_text' => pSQL(Tools::getValue('cta_text_' . $idLang)),
+                'cta_url' => pSQL(Tools::getValue('cta_url_' . $idLang)),
+                'coupon_code' => pSQL(Tools::getValue('coupon_code_' . $idLang)),
+                'consent_text' => pSQL(Tools::getValue('consent_text_' . $idLang)),
+                'success_message' => pSQL(Tools::getValue('success_message_' . $idLang)),
+            ], true);
+        }
+    }
+
+    private function saveTargetingValues($idPopup)
+    {
+        Db::getInstance()->delete('smart_popup_targeting', 'id_popup = ' . (int) $idPopup);
+        $rules = [];
+
+        $this->addArrayRule($rules, 'page_type', 'in', Tools::getValue('target_page_types'));
+        $this->addArrayRule($rules, 'device', 'in', Tools::getValue('target_devices'));
+        $groups = array_filter(array_map('intval', (array) Tools::getValue('target_groups')));
+        $this->addArrayRule($rules, 'customer_group', 'in', $groups);
+        $this->addArrayRule($rules, 'language', 'in', Tools::getValue('target_languages'));
+        $this->addArrayRule($rules, 'currency', 'in', Tools::getValue('target_currencies'));
+
+        $loginState = Tools::getValue('target_login_state');
+        if (in_array($loginState, ['logged', 'guest'])) {
+            $rules[] = ['target_type' => 'login_state', 'operator' => 'eq', 'target_value' => $loginState];
+        }
+
+        $urlContains = trim(Tools::getValue('target_url_contains'));
+        if ($urlContains !== '') {
+            $rules[] = ['target_type' => 'url', 'operator' => 'contains', 'target_value' => $urlContains];
+        }
+
+        $minCartTotal = trim(Tools::getValue('target_min_cart_total'));
+        if ($minCartTotal !== '') {
+            $rules[] = ['target_type' => 'cart_total', 'operator' => 'gte', 'target_value' => (string) max(0, (float) $minCartTotal)];
+        }
+
+        $this->addCsvRule($rules, 'cart_product', Tools::getValue('target_cart_products'));
+        $this->addCsvRule($rules, 'cart_category', Tools::getValue('target_cart_categories'));
+
+        foreach ($rules as $rule) {
+            Db::getInstance()->insert('smart_popup_targeting', [
+                'id_popup' => (int) $idPopup,
+                'target_type' => pSQL($rule['target_type']),
+                'operator' => pSQL($rule['operator']),
+                'target_value' => pSQL($rule['target_value']),
+            ]);
+        }
+    }
+
+    private function saveVariantValues($idPopup)
+    {
+        $variantRows = Db::getInstance()->executeS(
+            'SELECT id_variant FROM `' . _DB_PREFIX_ . 'smart_popup_variant` WHERE id_popup = ' . (int) $idPopup
+        );
+        foreach ($variantRows as $row) {
+            Db::getInstance()->delete('smart_popup_variant_lang', 'id_variant = ' . (int) $row['id_variant']);
+        }
+        Db::getInstance()->delete('smart_popup_variant', 'id_popup = ' . (int) $idPopup);
+
+        $abEnabled = (int) Tools::getValue('ab_test_enabled');
+        $trafficA = max(1, min(99, (int) Tools::getValue('variant_a_traffic', 50)));
+        if (!$abEnabled) {
+            $trafficA = 100;
+        }
+        $variants = [
+            'a' => [
+                'name' => Tools::getValue('variant_a_name', 'Variant A'),
+                'active' => 1,
+                'traffic_percentage' => $trafficA,
+            ],
+            'b' => [
+                'name' => Tools::getValue('variant_b_name', 'Variant B'),
+                'active' => $abEnabled ? 1 : 0,
+                'traffic_percentage' => $abEnabled ? 100 - $trafficA : 0,
+            ],
+        ];
+
+        foreach ($variants as $key => $variant) {
+            Db::getInstance()->insert('smart_popup_variant', [
+                'id_popup' => (int) $idPopup,
+                'variant_key' => pSQL($key),
+                'name' => pSQL($variant['name']),
+                'active' => (int) $variant['active'],
+                'traffic_percentage' => (int) $variant['traffic_percentage'],
+                'date_add' => date('Y-m-d H:i:s'),
+                'date_upd' => date('Y-m-d H:i:s'),
+            ]);
+            $idVariant = (int) Db::getInstance()->Insert_ID();
+
+            foreach (Language::getLanguages(false) as $lang) {
+                $idLang = (int) $lang['id_lang'];
+                Db::getInstance()->insert('smart_popup_variant_lang', [
+                    'id_variant' => $idVariant,
+                    'id_lang' => $idLang,
+                    'title' => pSQL(Tools::getValue('variant_' . $key . '_title_' . $idLang)),
+                    'subtitle' => pSQL(Tools::getValue('variant_' . $key . '_subtitle_' . $idLang)),
+                    'content' => pSQL(Tools::getValue('variant_' . $key . '_content_' . $idLang), true),
+                    'cta_text' => pSQL(Tools::getValue('variant_' . $key . '_cta_text_' . $idLang)),
+                    'cta_url' => pSQL(Tools::getValue('variant_' . $key . '_cta_url_' . $idLang)),
+                    'coupon_code' => pSQL(Tools::getValue('variant_' . $key . '_coupon_code_' . $idLang)),
+                ], true);
+            }
+        }
+    }
+
+    private function getPopupRow($idPopup)
+    {
+        $sql = new DbQuery();
+        $sql->select('p.*, pl.title');
+        $sql->from('smart_popup', 'p');
+        $sql->leftJoin('smart_popup_lang', 'pl', 'p.id_popup = pl.id_popup AND pl.id_lang = ' . (int) $this->context->language->id);
+        $sql->where('p.id_popup = ' . (int) $idPopup);
+
+        return Db::getInstance()->getRow($sql);
+    }
+
+    private function getLangValues($idPopup)
+    {
+        $rows = Db::getInstance()->executeS(
+            'SELECT * FROM `' . _DB_PREFIX_ . 'smart_popup_lang` WHERE id_popup = ' . (int) $idPopup
+        );
+        $values = [];
+        foreach ($rows as $row) {
+            $values[(int) $row['id_lang']] = $row;
+        }
+
+        return $values;
+    }
+
+    private function getTargetingValues($idPopup)
+    {
+        $values = $this->getDefaultTargetingValues('announcement');
+        $rows = Db::getInstance()->executeS(
+            'SELECT * FROM `' . _DB_PREFIX_ . 'smart_popup_targeting` WHERE id_popup = ' . (int) $idPopup
+        );
+
+        foreach ($rows as $row) {
+            $decoded = json_decode($row['target_value'], true);
+            $value = is_array($decoded) ? $decoded : $row['target_value'];
+            switch ($row['target_type']) {
+                case 'page_type':
+                    $values['page_types'] = $value;
+                    break;
+                case 'device':
+                    $values['devices'] = $value;
+                    break;
+                case 'customer_group':
+                    $values['groups'] = array_map('intval', (array) $value);
+                    break;
+                case 'language':
+                    $values['languages'] = (array) $value;
+                    break;
+                case 'currency':
+                    $values['currencies'] = (array) $value;
+                    break;
+                case 'login_state':
+                    $values['login_state'] = $value;
+                    break;
+                case 'url':
+                    $values['url_contains'] = $value;
+                    break;
+                case 'cart_total':
+                    $values['min_cart_total'] = $value;
+                    break;
+                case 'cart_product':
+                    $values['cart_products'] = implode(',', (array) $value);
+                    break;
+                case 'cart_category':
+                    $values['cart_categories'] = implode(',', (array) $value);
+                    break;
+            }
+        }
+
+        return $values;
+    }
+
+    private function getVariantValues($idPopup)
+    {
+        $variants = $this->getDefaultVariants('announcement');
+        $rows = Db::getInstance()->executeS(
+            'SELECT * FROM `' . _DB_PREFIX_ . 'smart_popup_variant` WHERE id_popup = ' . (int) $idPopup . ' ORDER BY variant_key ASC'
+        );
+
+        foreach ($rows as $row) {
+            $key = $row['variant_key'];
+            $variants[$key]['id_variant'] = (int) $row['id_variant'];
+            $variants[$key]['name'] = $row['name'];
+            $variants[$key]['active'] = (int) $row['active'];
+            $variants[$key]['traffic_percentage'] = (int) $row['traffic_percentage'];
+            $variants[$key]['lang'] = [];
+
+            $langRows = Db::getInstance()->executeS(
+                'SELECT * FROM `' . _DB_PREFIX_ . 'smart_popup_variant_lang` WHERE id_variant = ' . (int) $row['id_variant']
+            );
+            foreach ($langRows as $langRow) {
+                $variants[$key]['lang'][(int) $langRow['id_lang']] = $langRow;
+            }
+        }
+
+        return $variants;
+    }
+
+    private function duplicatePopup($idPopup)
+    {
+        $popup = Db::getInstance()->getRow(
+            'SELECT * FROM `' . _DB_PREFIX_ . 'smart_popup` WHERE id_popup = ' . (int) $idPopup
+        );
+        if (!$popup) {
+            return 0;
+        }
+
+        unset($popup['id_popup']);
+        $popup['active'] = 0;
+        $popup['internal_name'] = pSQL($this->l('Copy of ') . $popup['internal_name']);
+        $popup['date_add'] = date('Y-m-d H:i:s');
+        $popup['date_upd'] = date('Y-m-d H:i:s');
+        Db::getInstance()->insert('smart_popup', $popup, true);
+        $newId = (int) Db::getInstance()->Insert_ID();
+
+        foreach (Db::getInstance()->executeS('SELECT * FROM `' . _DB_PREFIX_ . 'smart_popup_lang` WHERE id_popup = ' . (int) $idPopup) as $lang) {
+            $lang['id_popup'] = $newId;
+            Db::getInstance()->insert('smart_popup_lang', $lang, true);
+        }
+
+        foreach (Db::getInstance()->executeS('SELECT * FROM `' . _DB_PREFIX_ . 'smart_popup_targeting` WHERE id_popup = ' . (int) $idPopup) as $rule) {
+            unset($rule['id_targeting']);
+            $rule['id_popup'] = $newId;
+            Db::getInstance()->insert('smart_popup_targeting', $rule, true);
+        }
+
+        foreach (Db::getInstance()->executeS('SELECT * FROM `' . _DB_PREFIX_ . 'smart_popup_variant` WHERE id_popup = ' . (int) $idPopup) as $variant) {
+            $oldVariantId = (int) $variant['id_variant'];
+            unset($variant['id_variant']);
+            $variant['id_popup'] = $newId;
+            $variant['date_add'] = date('Y-m-d H:i:s');
+            $variant['date_upd'] = date('Y-m-d H:i:s');
+            Db::getInstance()->insert('smart_popup_variant', $variant, true);
+            $newVariantId = (int) Db::getInstance()->Insert_ID();
+
+            foreach (Db::getInstance()->executeS('SELECT * FROM `' . _DB_PREFIX_ . 'smart_popup_variant_lang` WHERE id_variant = ' . $oldVariantId) as $variantLang) {
+                $variantLang['id_variant'] = $newVariantId;
+                Db::getInstance()->insert('smart_popup_variant_lang', $variantLang, true);
+            }
+        }
+
+        Ps_advanced_popup::clearCache();
+
+        return $newId;
+    }
+
+    private function getPresetTemplates()
+    {
+        return [
+            'newsletter_discount' => [
+                'label' => $this->l('Newsletter discount'),
+                'goal' => 'newsletter',
+                'type' => 'newsletter',
+                'layout' => 'newsletter',
+                'trigger' => 'load',
+                'trigger_value' => 4,
+                'title' => $this->l('Get 10% off your first order'),
+                'subtitle' => $this->l('Join the list for launches and private offers.'),
+                'content' => $this->l('We send useful campaign updates, not noise.'),
+                'cta' => $this->l('Subscribe'),
+            ],
+            'exit_coupon' => [
+                'label' => $this->l('Exit intent coupon'),
+                'goal' => 'coupon',
+                'type' => 'coupon',
+                'layout' => 'compact_coupon',
+                'trigger' => 'exit',
+                'trigger_value' => 0,
+                'title' => $this->l('Before you go'),
+                'subtitle' => $this->l('Use this code before checkout.'),
+                'content' => $this->l('A small reason to finish the order today.'),
+                'cta' => $this->l('Copy code'),
+                'coupon' => 'SAVE10',
+            ],
+            'cart_reminder' => [
+                'label' => $this->l('Cart reminder'),
+                'goal' => 'cart_recovery',
+                'type' => 'cta',
+                'layout' => 'centered',
+                'trigger' => 'inactivity',
+                'trigger_value' => 30,
+                'title' => $this->l('Your cart is waiting'),
+                'subtitle' => $this->l('Complete checkout before your items sell out.'),
+                'content' => $this->l('You can return to the cart and finish in a few seconds.'),
+                'cta' => $this->l('View cart'),
+            ],
+            'free_shipping' => [
+                'label' => $this->l('Free shipping'),
+                'goal' => 'free_shipping',
+                'type' => 'announcement',
+                'layout' => 'image_top',
+                'trigger' => 'load',
+                'trigger_value' => 2,
+                'title' => $this->l('Free shipping today'),
+                'subtitle' => $this->l('A cleaner offer for visitors ready to buy.'),
+                'content' => $this->l('Highlight a simple threshold or limited-time benefit.'),
+                'cta' => $this->l('Shop now'),
+            ],
+            'product_upsell' => [
+                'label' => $this->l('Product upsell'),
+                'goal' => 'upsell',
+                'type' => 'cta',
+                'layout' => 'image_left',
+                'trigger' => 'scroll',
+                'trigger_value' => 45,
+                'title' => $this->l('Pairs well with this product'),
+                'subtitle' => $this->l('Show a relevant add-on without blocking the page too early.'),
+                'content' => $this->l('Use product-page targeting for the best result.'),
+                'cta' => $this->l('See recommendation'),
+            ],
+            'image_campaign' => [
+                'label' => $this->l('Image campaign'),
+                'goal' => 'image_campaign',
+                'type' => 'image',
+                'layout' => 'full_image',
+                'trigger' => 'load',
+                'trigger_value' => 3,
+                'title' => $this->l('Campaign image'),
+                'subtitle' => '',
+                'content' => '',
+                'cta' => $this->l('Open campaign'),
+            ],
+            'announcement' => [
+                'label' => $this->l('Announcement'),
+                'goal' => 'announcement',
+                'type' => 'announcement',
+                'layout' => 'centered',
+                'trigger' => 'load',
+                'trigger_value' => 2,
+                'title' => $this->l('Important update'),
+                'subtitle' => $this->l('Keep visitors informed with a restrained popup.'),
+                'content' => $this->l('Use this for delivery notes, holiday hours or store-wide updates.'),
+                'cta' => $this->l('Learn more'),
+            ],
+        ];
+    }
+
+    private function getDefaultPopup($templateKey)
+    {
+        $templates = $this->getPresetTemplates();
+        if (!isset($templates[$templateKey])) {
+            $templateKey = 'announcement';
+        }
+        $preset = $templates[$templateKey];
+
+        return [
+            'id_popup' => 0,
+            'active' => 0,
+            'internal_name' => $preset['label'],
+            'popup_type' => $preset['type'],
+            'campaign_goal' => $preset['goal'],
+            'template_key' => $templateKey,
+            'layout' => $preset['layout'],
+            'image_position' => 'top',
+            'trigger_type' => $preset['trigger'],
+            'trigger_value' => $preset['trigger_value'],
+            'frequency_days' => 7,
+            'width' => 560,
+            'bg_color' => '#ffffff',
+            'text_color' => '#1f2937',
+            'accent_color' => '#25b9d7',
+            'button_color' => '#111827',
+            'button_text_color' => '#ffffff',
+            'bg_image' => '',
+            'border_radius' => 8,
+            'overlay_opacity' => 0.55,
+            'animation' => 'fadeIn',
+            'close_button_style' => 'circle',
+            'close_on_overlay' => 1,
+            'mobile_behavior' => 'bottom_sheet',
+            'priority' => 0,
+            'ab_test_enabled' => 0,
+            'winner_metric' => 'conversion_rate',
+            'date_start' => '',
+            'date_end' => '',
+        ];
+    }
+
+    private function getDefaultLangValues($templateKey)
+    {
+        $templates = $this->getPresetTemplates();
+        $preset = isset($templates[$templateKey]) ? $templates[$templateKey] : $templates['announcement'];
+        $values = [];
+
+        foreach (Language::getLanguages(false) as $lang) {
+            $idLang = (int) $lang['id_lang'];
+            $values[$idLang] = [
+                'title' => $preset['title'],
+                'subtitle' => $preset['subtitle'],
+                'content' => $preset['content'],
+                'cta_text' => $preset['cta'],
+                'cta_url' => '',
+                'coupon_code' => isset($preset['coupon']) ? $preset['coupon'] : '',
+                'consent_text' => $this->l('I agree to receive campaign emails.'),
+                'success_message' => $this->l('Thank you. You are subscribed.'),
+            ];
+        }
+
+        return $values;
+    }
+
+    private function getDefaultTargetingValues($templateKey)
+    {
+        $pageTypes = ['home', 'category', 'product', 'cart', 'checkout', 'search', 'cms', 'other'];
+        if ($templateKey === 'cart_reminder') {
+            $pageTypes = ['cart', 'checkout'];
+        } elseif ($templateKey === 'product_upsell') {
+            $pageTypes = ['product'];
+        }
+
+        return [
+            'page_types' => $pageTypes,
+            'devices' => ['desktop', 'tablet', 'mobile'],
+            'groups' => [],
+            'languages' => [],
+            'currencies' => [],
+            'login_state' => '',
+            'url_contains' => '',
+            'min_cart_total' => '',
+            'cart_products' => '',
+            'cart_categories' => '',
+        ];
+    }
+
+    private function getDefaultVariants($templateKey)
+    {
+        $langValues = $this->getDefaultLangValues($templateKey);
+
+        return [
+            'a' => [
+                'id_variant' => 0,
+                'name' => 'Variant A',
+                'active' => 1,
+                'traffic_percentage' => 100,
+                'lang' => $langValues,
+            ],
+            'b' => [
+                'id_variant' => 0,
+                'name' => 'Variant B',
+                'active' => 0,
+                'traffic_percentage' => 0,
+                'lang' => $langValues,
+            ],
+        ];
+    }
+
+    private function processImageUpload($existingPath)
+    {
+        if (empty($_FILES['bg_image']['name']) || empty($_FILES['bg_image']['tmp_name'])) {
+            return $existingPath;
+        }
+
+        $extension = strtolower(pathinfo($_FILES['bg_image']['name'], PATHINFO_EXTENSION));
+        if (!in_array($extension, ['jpg', 'jpeg', 'png', 'webp', 'gif'])) {
+            $this->errors[] = $this->l('Invalid image format.');
+            return $existingPath;
+        }
+
+        $uploadDir = _PS_MODULE_DIR_ . 'ps_advanced_popup/views/img/';
+        if (!is_dir($uploadDir)) {
+            mkdir($uploadDir, 0755, true);
+        }
+
+        $fileName = 'popup_' . date('YmdHis') . '_' . Tools::passwdGen(8) . '.' . $extension;
+        $filePath = $uploadDir . $fileName;
+
+        if (!move_uploaded_file($_FILES['bg_image']['tmp_name'], $filePath)) {
+            $this->errors[] = $this->l('Image upload failed.');
+            return $existingPath;
+        }
+
+        return 'modules/ps_advanced_popup/views/img/' . $fileName;
+    }
+
+    private function addArrayRule(&$rules, $type, $operator, $values)
+    {
+        $values = array_values(array_filter((array) $values, function ($value) {
+            return $value !== '' && $value !== null && $value !== false && $value !== 0 && $value !== 'all';
+        }));
+
+        if (!empty($values)) {
+            $rules[] = [
+                'target_type' => $type,
+                'operator' => $operator,
+                'target_value' => json_encode($values),
+            ];
+        }
+    }
+
+    private function addCsvRule(&$rules, $type, $csvValue)
+    {
+        $ids = array_filter(array_map('intval', preg_split('/\s*,\s*/', (string) $csvValue)));
+        if (!empty($ids)) {
+            $rules[] = [
+                'target_type' => $type,
+                'operator' => 'in',
+                'target_value' => json_encode(array_values($ids)),
+            ];
+        }
+    }
+
+    private function sanitizeChoice($value, $allowed, $default)
+    {
+        return in_array($value, $allowed) ? $value : $default;
+    }
+
+    private function sanitizeColor($value, $default)
+    {
+        return preg_match('/^#[0-9A-Fa-f]{6}$/', (string) $value) ? $value : $default;
+    }
+
+    private function normalizeDateTime($value)
+    {
+        $value = trim((string) $value);
+        if ($value === '') {
+            return null;
+        }
+
+        $timestamp = strtotime($value);
+        if (!$timestamp) {
+            return null;
+        }
+
+        return date('Y-m-d H:i:s', $timestamp);
     }
 }

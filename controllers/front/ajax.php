@@ -1,6 +1,6 @@
 <?php
 /**
- * AJAX Controller for Smart Popup
+ * AJAX controller for Advanced Popup Studio.
  */
 
 if (!defined('_PS_VERSION_')) {
@@ -15,21 +15,28 @@ class Ps_advanced_popupAjaxModuleFrontController extends ModuleFrontController
     {
         parent::initContent();
 
-        // Verify AJAX request
-        if (!$this->isXmlHttpRequest()) {
-            $this->ajaxResponse(['success' => false, 'message' => 'Invalid request']);
-            return;
-        }
-
         $action = Tools::getValue('action');
-
         switch ($action) {
             case 'newsletter':
+            case 'newsletter_subscribe':
                 $this->processNewsletter();
                 break;
 
             case 'track':
-                $this->processTracking();
+            case 'track_event':
+                $this->processTrackEvent();
+                break;
+
+            case 'coupon_copy':
+                $this->processCouponCopy();
+                break;
+
+            case 'cta_click':
+                $this->processCtaClick();
+                break;
+
+            case 'preview_render':
+                $this->processPreviewRender();
                 break;
 
             default:
@@ -37,16 +44,17 @@ class Ps_advanced_popupAjaxModuleFrontController extends ModuleFrontController
         }
     }
 
-    /**
-     * Process newsletter subscription
-     */
     private function processNewsletter()
     {
-        $email = Tools::getValue('email');
+        $email = trim(Tools::getValue('email'));
         $idPopup = (int) Tools::getValue('id_popup');
+        $idVariant = (int) Tools::getValue('id_variant');
+        $context = $this->getEventContext();
 
-        // Validate email
-        if (!Validate::isEmail($email)) {
+        SmartPopup::trackEvent($idPopup, 'newsletter_submit', $idVariant, $context);
+
+        if (!$idPopup || !Validate::isEmail($email)) {
+            SmartPopup::trackEvent($idPopup, 'newsletter_error', $idVariant, $context, ['reason' => 'invalid_email']);
             $this->ajaxResponse([
                 'success' => false,
                 'message' => $this->module->l('Please enter a valid email address', 'ajax'),
@@ -54,84 +62,62 @@ class Ps_advanced_popupAjaxModuleFrontController extends ModuleFrontController
             return;
         }
 
-        // Check if ps_emailsubscription module exists
         if (Module::isInstalled('ps_emailsubscription') && Module::isEnabled('ps_emailsubscription')) {
             $result = $this->subscribeWithModule($email);
         } else {
-            $result = $this->subscribeDirectly($email);
+            $result = $this->subscribeDirectly($email, $idPopup, $idVariant);
         }
 
         if ($result['success']) {
-            SmartPopup::incrementStat($idPopup, 'conversion');
+            $this->recordSubscriber($email, $idPopup, $idVariant);
+            SmartPopup::trackEvent($idPopup, 'newsletter_success', $idVariant, $context);
+        } else {
+            SmartPopup::trackEvent($idPopup, 'newsletter_error', $idVariant, $context, ['reason' => 'subscribe_failed']);
         }
 
         $this->ajaxResponse($result);
     }
 
-    /**
-     * Subscribe using ps_emailsubscription module
-     */
     private function subscribeWithModule($email)
     {
         $idShop = (int) $this->context->shop->id;
+        $exists = Db::getInstance()->getValue(
+            'SELECT COUNT(*) FROM `' . _DB_PREFIX_ . 'emailsubscription`
+             WHERE `email` = "' . pSQL($email) . '"
+             AND `id_shop` = ' . (int) $idShop
+        );
 
-        // Check if already subscribed
-        $sql = 'SELECT * FROM `' . _DB_PREFIX_ . 'emailsubscription`
-                WHERE `email` = "' . pSQL($email) . '"
-                AND `id_shop` = ' . $idShop;
-
-        if (Db::getInstance()->getRow($sql)) {
+        if ($exists) {
             return [
                 'success' => false,
                 'message' => $this->module->l('This email is already subscribed', 'ajax'),
             ];
         }
 
-        // Insert subscription
         $result = Db::getInstance()->insert('emailsubscription', [
             'id_shop' => $idShop,
             'id_shop_group' => (int) $this->context->shop->id_shop_group,
             'email' => pSQL($email),
             'newsletter_date_add' => date('Y-m-d H:i:s'),
             'ip_registration_newsletter' => pSQL(Tools::getRemoteAddr()),
-            'http_referer' => pSQL(Tools::getHttpReferer()),
+            'http_referer' => pSQL($this->getReferer()),
             'active' => 1,
         ]);
 
-        if ($result) {
-            return [
-                'success' => true,
-                'message' => $this->module->l('Thank you for subscribing!', 'ajax'),
-            ];
-        }
-
         return [
-            'success' => false,
-            'message' => $this->module->l('An error occurred. Please try again.', 'ajax'),
+            'success' => (bool) $result,
+            'message' => $result
+                ? $this->module->l('Thank you for subscribing!', 'ajax')
+                : $this->module->l('An error occurred. Please try again.', 'ajax'),
         ];
     }
 
-    /**
-     * Direct subscription (fallback)
-     */
-    private function subscribeDirectly($email)
+    private function subscribeDirectly($email, $idPopup, $idVariant)
     {
-        // Create simple newsletter table if not exists
-        $sql = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'smart_popup_subscribers` (
-            `id_subscriber` INT(11) UNSIGNED NOT NULL AUTO_INCREMENT,
-            `email` VARCHAR(255) NOT NULL,
-            `date_add` DATETIME NOT NULL,
-            `id_shop` INT(11) UNSIGNED NOT NULL,
-            PRIMARY KEY (`id_subscriber`),
-            UNIQUE KEY `email_shop` (`email`, `id_shop`)
-        ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8mb4';
-
-        Db::getInstance()->execute($sql);
-
-        // Check if exists
         $exists = Db::getInstance()->getValue(
-            'SELECT COUNT(*) FROM `' . _DB_PREFIX_ . 'smart_popup_subscribers`
+            'SELECT COUNT(*) FROM `' . _DB_PREFIX_ . 'smart_popup_subscriber`
              WHERE `email` = "' . pSQL($email) . '"
+             AND `id_popup` = ' . (int) $idPopup . '
              AND `id_shop` = ' . (int) $this->context->shop->id
         );
 
@@ -142,50 +128,117 @@ class Ps_advanced_popupAjaxModuleFrontController extends ModuleFrontController
             ];
         }
 
-        $result = Db::getInstance()->insert('smart_popup_subscribers', [
-            'email' => pSQL($email),
-            'date_add' => date('Y-m-d H:i:s'),
-            'id_shop' => (int) $this->context->shop->id,
-        ]);
+        $result = $this->recordSubscriber($email, $idPopup, $idVariant);
 
         return [
-            'success' => $result,
+            'success' => (bool) $result,
             'message' => $result
                 ? $this->module->l('Thank you for subscribing!', 'ajax')
                 : $this->module->l('An error occurred. Please try again.', 'ajax'),
         ];
     }
 
-    /**
-     * Process stat tracking
-     */
-    private function processTracking()
+    private function recordSubscriber($email, $idPopup, $idVariant)
     {
-        $idPopup = (int) Tools::getValue('id_popup');
-        $statType = Tools::getValue('stat_type');
+        $exists = Db::getInstance()->getValue(
+            'SELECT COUNT(*) FROM `' . _DB_PREFIX_ . 'smart_popup_subscriber`
+             WHERE `email` = "' . pSQL($email) . '"
+             AND `id_popup` = ' . (int) $idPopup . '
+             AND `id_shop` = ' . (int) $this->context->shop->id
+        );
 
-        if (!$idPopup || !in_array($statType, ['impression', 'conversion'])) {
-            $this->ajaxResponse(['success' => false]);
-            return;
+        if ($exists) {
+            return true;
         }
 
-        SmartPopup::incrementStat($idPopup, $statType);
-
-        $this->ajaxResponse(['success' => true]);
+        return Db::getInstance()->insert('smart_popup_subscriber', [
+            'id_popup' => (int) $idPopup,
+            'id_variant' => (int) $idVariant,
+            'id_shop' => (int) $this->context->shop->id,
+            'email' => pSQL($email),
+            'consent' => (int) Tools::getValue('consent'),
+            'source' => 'popup',
+            'date_add' => date('Y-m-d H:i:s'),
+        ]);
     }
 
-    /**
-     * Check if request is AJAX
-     */
-    private function isXmlHttpRequest()
+    private function processTrackEvent()
     {
-        return !empty($_SERVER['HTTP_X_REQUESTED_WITH']) 
-            && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+        $idPopup = (int) Tools::getValue('id_popup');
+        $idVariant = (int) Tools::getValue('id_variant');
+        $eventType = Tools::getValue('event_type', Tools::getValue('stat_type'));
+        $extra = json_decode(Tools::getValue('extra'), true);
+
+        $tracked = SmartPopup::trackEvent(
+            $idPopup,
+            $eventType,
+            $idVariant,
+            $this->getEventContext(),
+            is_array($extra) ? $extra : []
+        );
+
+        $this->ajaxResponse(['success' => (bool) $tracked]);
     }
 
-    /**
-     * Send JSON response
-     */
+    private function processCouponCopy()
+    {
+        $idPopup = (int) Tools::getValue('id_popup');
+        $idVariant = (int) Tools::getValue('id_variant');
+        $couponCode = Tools::getValue('coupon_code');
+        $context = $this->getEventContext();
+
+        SmartPopup::recordCouponEvent(
+            $idPopup,
+            $idVariant,
+            $couponCode,
+            'copy',
+            isset($context['session_key']) ? $context['session_key'] : ''
+        );
+        $tracked = SmartPopup::trackEvent($idPopup, 'coupon_copy', $idVariant, $context, ['coupon_code' => $couponCode]);
+
+        $this->ajaxResponse([
+            'success' => (bool) $tracked,
+            'message' => $this->module->l('Coupon code copied.', 'ajax'),
+        ]);
+    }
+
+    private function processCtaClick()
+    {
+        $tracked = SmartPopup::trackEvent(
+            (int) Tools::getValue('id_popup'),
+            'cta_click',
+            (int) Tools::getValue('id_variant'),
+            $this->getEventContext()
+        );
+
+        $this->ajaxResponse(['success' => (bool) $tracked]);
+    }
+
+    private function processPreviewRender()
+    {
+        $this->ajaxResponse([
+            'success' => true,
+            'html' => '<div class="smart-popup-preview-fragment">' . Tools::htmlentitiesUTF8(Tools::getValue('title')) . '</div>',
+        ]);
+    }
+
+    private function getEventContext()
+    {
+        return [
+            'id_shop' => (int) $this->context->shop->id,
+            'id_lang' => (int) $this->context->language->id,
+            'device' => Tools::getValue('device', 'desktop'),
+            'page_type' => Tools::getValue('page_type', 'other'),
+            'url' => Tools::getValue('url', $this->getReferer()),
+            'session_key' => Tools::getValue('session_key'),
+        ];
+    }
+
+    private function getReferer()
+    {
+        return isset($_SERVER['HTTP_REFERER']) ? $_SERVER['HTTP_REFERER'] : '';
+    }
+
     private function ajaxResponse($data)
     {
         header('Content-Type: application/json');

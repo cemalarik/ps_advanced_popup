@@ -1,99 +1,193 @@
-/**
- * Smart Popup Admin JS
- */
-$(document).ready(function () {
-    // Trigger type change handler
-    $('select[name="trigger_type"]').on('change', function () {
-        updateTriggerHint($(this).val());
-    }).trigger('change');
+(function () {
+    'use strict';
 
-    function updateTriggerHint(type) {
-        var hints = {
-            'load': 'Saniye cinsinden gecikme süresi (örn: 5 = 5 saniye sonra)',
-            'exit': 'Kullanılmaz (Exit intent otomatik algılanır)',
-            'scroll': 'Yüzde cinsinden scroll miktarı (örn: 50 = %50)',
-            'inactivity': 'Saniye cinsinden hareketsizlik süresi'
-        };
-
-        var $hint = $('input[name="trigger_value"]').closest('.form-group').find('.help-block');
-        if ($hint.length) {
-            $hint.text(hints[type] || '');
-        }
+    function $(selector, scope) {
+        return (scope || document).querySelector(selector);
     }
 
-    // Popup type change handler
-    $('select[name="popup_type"]').on('change', function () {
-        var type = $(this).val();
+    function $all(selector, scope) {
+        return Array.prototype.slice.call((scope || document).querySelectorAll(selector));
+    }
 
-        var $contentGroup = $('textarea[name^="content"]').closest('.form-group');
-        var $ctaGroup = $('input[name^="cta_text"]').closest('.form-group');
-        var $ctaUrlGroup = $('input[name^="cta_url"]').closest('.form-group');
-
-        if (type === 'image') {
-            $contentGroup.hide();
-            $ctaGroup.hide();
-        } else {
-            $contentGroup.show();
-            $ctaGroup.show();
-        }
-    }).trigger('change');
-
-    // Target pages change handler
-    $('select[name="target_pages[]"]').on('change', function () {
-        var selected = $(this).val() || [];
-
-        // If 'all' is selected, deselect others
-        if (selected.includes('all') && selected.length > 1) {
-            $(this).val(['all']);
-        }
-    });
-
-    // Initialize chosen for multiple selects
-    if ($.fn.chosen) {
-        $('select.chosen').chosen({
-            width: '100%',
-            placeholder_text_multiple: 'Seçiniz...'
+    function setStep(step) {
+        $all('.aps-step').forEach(function (button) {
+            button.classList.toggle('is-active', button.getAttribute('data-step') === String(step));
+        });
+        $all('.aps-wizard-panel').forEach(function (panel) {
+            panel.classList.toggle('is-active', panel.getAttribute('data-panel') === String(step));
         });
     }
 
-    // Form validation
-    $('form#smart_popup_form').on('submit', function (e) {
-        var title = $('input[name^="title_"]').first().val();
-        if (!title || title.trim() === '') {
-            alert('Lütfen bir başlık girin.');
-            e.preventDefault();
-            return false;
+    function currentStep() {
+        var active = $('.aps-step.is-active');
+        return active ? parseInt(active.getAttribute('data-step'), 10) : 1;
+    }
+
+    function activeLanguageId() {
+        var active = $('.aps-lang-tab.is-active');
+        return active ? active.getAttribute('data-lang') : null;
+    }
+
+    function field(name) {
+        return $('[name="' + name + '"]');
+    }
+
+    function updatePreview() {
+        var preview = $('.aps-preview-popup');
+        if (!preview) {
+            return;
         }
 
-        var overlayOpacity = parseFloat($('input[name="overlay_opacity"]').val());
-        if (isNaN(overlayOpacity) || overlayOpacity < 0 || overlayOpacity > 1) {
-            alert('Overlay opaklığı 0 ile 1 arasında olmalıdır.');
-            e.preventDefault();
-            return false;
+        var langId = activeLanguageId();
+        var title = field('title_' + langId);
+        var subtitle = field('subtitle_' + langId);
+        var content = field('content_' + langId);
+        var cta = field('cta_text_' + langId);
+        var coupon = field('coupon_code_' + langId);
+
+        $('.aps-preview-title').textContent = title ? title.value : '';
+        $('.aps-preview-subtitle').textContent = subtitle ? subtitle.value : '';
+        $('.aps-preview-content').textContent = content ? content.value : '';
+        $('.aps-preview-cta').textContent = cta ? cta.value : '';
+        $('.aps-preview-coupon').textContent = coupon ? coupon.value : '';
+        $('.aps-preview-coupon').style.display = coupon && coupon.value ? 'inline-flex' : 'none';
+
+        preview.style.backgroundColor = field('bg_color') ? field('bg_color').value : '#ffffff';
+        preview.style.color = field('text_color') ? field('text_color').value : '#1f2937';
+        preview.style.borderRadius = (field('border_radius') ? field('border_radius').value : 8) + 'px';
+        preview.style.maxWidth = (field('width') ? field('width').value : 560) + 'px';
+        $('.aps-preview-cta').style.backgroundColor = field('button_color') ? field('button_color').value : '#111827';
+        $('.aps-preview-cta').style.color = field('button_text_color') ? field('button_text_color').value : '#ffffff';
+        $('.aps-preview-coupon').style.borderColor = field('accent_color') ? field('accent_color').value : '#25b9d7';
+    }
+
+    function bindWizard() {
+        $all('.aps-step').forEach(function (button) {
+            button.addEventListener('click', function () {
+                setStep(button.getAttribute('data-step'));
+            });
+        });
+
+        var next = $('.aps-next-step');
+        var prev = $('.aps-prev-step');
+        if (next) {
+            next.addEventListener('click', function () {
+                setStep(Math.min(5, currentStep() + 1));
+            });
         }
+        if (prev) {
+            prev.addEventListener('click', function () {
+                setStep(Math.max(1, currentStep() - 1));
+            });
+        }
+    }
 
-        return true;
-    });
+    function bindLanguages() {
+        $all('.aps-lang-tab').forEach(function (button) {
+            button.addEventListener('click', function () {
+                var lang = button.getAttribute('data-lang');
+                $all('.aps-lang-tab').forEach(function (tab) {
+                    tab.classList.toggle('is-active', tab === button);
+                });
+                $all('.aps-language-panel').forEach(function (panel) {
+                    panel.classList.toggle('is-active', panel.getAttribute('data-lang-panel') === lang);
+                });
+                updatePreview();
+            });
+        });
+    }
 
-    // Color picker preview
-    $('input[name="bg_color"]').on('change input', function () {
-        $(this).css('background-color', $(this).val());
-    }).trigger('change');
+    function bindTemplates() {
+        $all('.aps-template-grid-select input[type="radio"]').forEach(function (radio) {
+            radio.addEventListener('change', function () {
+                $all('.aps-template-card').forEach(function (card) {
+                    card.classList.remove('is-selected');
+                });
+                radio.closest('.aps-template-card').classList.add('is-selected');
 
-    // Image preview
-    $('input[name="bg_image"]').on('change', function () {
-        var file = this.files[0];
-        if (file) {
-            var reader = new FileReader();
-            reader.onload = function (e) {
-                var $preview = $('.image-preview');
-                if (!$preview.length) {
-                    $preview = $('<div class="image-preview"><img src=""></div>');
-                    $('input[name="bg_image"]').closest('.form-group').append($preview);
+                if (field('campaign_goal')) {
+                    field('campaign_goal').value = radio.getAttribute('data-goal');
                 }
-                $preview.find('img').attr('src', e.target.result);
-            };
-            reader.readAsDataURL(file);
+                if (field('popup_type')) {
+                    field('popup_type').value = radio.getAttribute('data-type');
+                }
+                if (field('layout')) {
+                    field('layout').value = radio.getAttribute('data-layout');
+                }
+                updatePreview();
+            });
+        });
+    }
+
+    function bindPreview() {
+        $all('[data-preview], input[type="color"], input[name="width"], input[name="border_radius"]').forEach(function (input) {
+            input.addEventListener('input', updatePreview);
+            input.addEventListener('change', updatePreview);
+        });
+
+        $all('[data-preview-device]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                $all('[data-preview-device]').forEach(function (item) {
+                    item.classList.toggle('is-active', item === button);
+                });
+                var shell = $('.aps-preview-shell');
+                if (shell) {
+                    shell.setAttribute('data-device', button.getAttribute('data-preview-device'));
+                }
+            });
+        });
+
+        updatePreview();
+    }
+
+    function bindValidation() {
+        var form = $('#aps-editor-form');
+        if (!form) {
+            return;
+        }
+
+        form.addEventListener('submit', function (event) {
+            var name = field('internal_name');
+            var traffic = field('variant_a_traffic');
+
+            if (!name || !name.value.trim()) {
+                event.preventDefault();
+                alert('Internal name is required.');
+                setStep(1);
+                return;
+            }
+
+            if (traffic) {
+                var value = parseInt(traffic.value, 10);
+                if (isNaN(value) || value < 1 || value > 99) {
+                    event.preventDefault();
+                    alert('Variant A traffic must be between 1 and 99.');
+                    setStep(5);
+                }
+            }
+        });
+    }
+
+    function bindConfirmations() {
+        $all('.aps-confirm-delete').forEach(function (link) {
+            link.addEventListener('click', function (event) {
+                if (!window.confirm('Delete this popup?')) {
+                    event.preventDefault();
+                }
+            });
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        bindWizard();
+        bindLanguages();
+        bindTemplates();
+        bindPreview();
+        bindValidation();
+        bindConfirmations();
+
+        if (window.ApsChartLite && window.apsStatsChartData && $('#apsStatsChart')) {
+            window.ApsChartLite.draw($('#apsStatsChart'), window.apsStatsChartData);
         }
     });
-});
+})();
